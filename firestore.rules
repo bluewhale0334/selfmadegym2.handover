@@ -1,0 +1,127 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /tagColors/{colorId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 공통 함수들
+    function canUpdateReadBy(existingData, newData) {
+      return request.auth != null
+             && newData.diff(existingData).affectedKeys().hasOnly(['readBy'])
+             && newData.readBy is list
+             && (
+               // readBy 필드가 기존에 없었던 경우
+               (!(existingData.readBy is list) 
+                && newData.readBy.size() == 1
+                && newData.readBy[0].userId == request.auth.uid)
+               ||
+               // readBy 필드가 기존에 있었던 경우
+               (existingData.readBy is list 
+                && newData.readBy.size() == existingData.readBy.size() + 1
+                && newData.readBy[newData.readBy.size() - 1].userId == request.auth.uid)
+             );
+    }
+
+    function canUpdateComments(existingData, newData) {
+      return request.auth != null
+             && newData.diff(existingData).affectedKeys().hasOnly(['comments'])
+             && newData.comments is list
+             && (
+               // 댓글 추가: comments 필드가 기존에 없었던 경우
+               (!(existingData.comments is list) && newData.comments.size() == 1
+                && newData.comments[0].userId == request.auth.uid)
+               ||
+               // 댓글 추가: comments 필드가 기존에 있었던 경우
+               (existingData.comments is list 
+                && newData.comments.size() == existingData.comments.size() + 1
+                && newData.comments[newData.comments.size() - 1].userId == request.auth.uid)
+               ||
+               // 댓글 수정: 배열 크기는 같음 (내용만 변경)
+               (existingData.comments is list
+                && newData.comments.size() == existingData.comments.size())
+               ||
+               // 댓글 삭제: 배열 크기가 1 감소
+               (existingData.comments is list
+                && newData.comments.size() == existingData.comments.size() - 1)
+             );
+    }
+
+    // 전체 공지 - 모든 인증된 사용자가 읽기/쓰기 가능, 수정/삭제는 작성자만
+    match /notices/{noticeId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null
+        && (resource.data.authorId == request.auth.uid
+            || canUpdateReadBy(resource.data, request.resource.data)
+            || canUpdateComments(resource.data, request.resource.data)
+            || request.resource.data.diff(resource.data).unchangedKeys().hasAll(['content', 'authorId', 'authorName', 'tagColor', 'createdAt']));
+      allow delete: if request.auth != null
+        && resource.data.authorId == request.auth.uid;
+    }
+
+    // 업무 지시 - 모든 인증된 사용자가 읽기/쓰기 가능, 수정/삭제는 작성자만
+    match /instructions/{instructionId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null
+        && (resource.data.authorId == request.auth.uid
+            || canUpdateReadBy(resource.data, request.resource.data)
+            || canUpdateComments(resource.data, request.resource.data)
+            || request.resource.data.diff(resource.data).unchangedKeys().hasAll(['content', 'authorId', 'authorName', 'tagColor', 'createdAt', 'date']));
+      allow delete: if request.auth != null
+        && resource.data.authorId == request.auth.uid;
+    }
+
+    // 일일 인수인계 - 모든 인증된 사용자가 읽기/쓰기 가능, 수정/삭제는 작성자만
+    match /handovers/{handoverId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null
+        && (resource.data.authorId == request.auth.uid
+            || canUpdateReadBy(resource.data, request.resource.data)
+            || canUpdateComments(resource.data, request.resource.data)
+            || request.resource.data.diff(resource.data).unchangedKeys().hasAll(['content', 'authorId', 'authorName', 'tagColor', 'createdAt', 'date']));
+      allow delete: if request.auth != null
+        && resource.data.authorId == request.auth.uid;
+    }
+
+    // 업무 진행사항 - 모든 인증된 사용자가 읽기/쓰기 가능, 수정/삭제는 작성자만
+    match /progresses/{progressId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null
+        && (resource.data.authorId == request.auth.uid
+            || canUpdateReadBy(resource.data, request.resource.data)
+            || canUpdateComments(resource.data, request.resource.data)
+            || request.resource.data.diff(resource.data).unchangedKeys().hasAll(['content', 'authorId', 'authorName', 'tagColor', 'createdAt', 'date']));
+      allow delete: if request.auth != null
+        && resource.data.authorId == request.auth.uid;
+    }
+
+    // 업무 체크리스트 - 사용자별로 읽기/쓰기 가능, 수정/삭제는 작성자만
+    match /checklists/{checklistId} {
+      allow read: if request.auth != null
+        && (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null
+        && resource.data.userId == request.auth.uid
+        && (resource.data.authorId == request.auth.uid
+            || canUpdateReadBy(resource.data, request.resource.data)
+            || canUpdateComments(resource.data, request.resource.data)
+            || request.resource.data.diff(resource.data).unchangedKeys().hasAll(['content', 'authorId', 'authorName', 'tagColor', 'createdAt', 'date', 'userId']));
+      allow delete: if request.auth != null
+        && resource.data.userId == request.auth.uid
+        && resource.data.authorId == request.auth.uid;
+    }
+  }
+}

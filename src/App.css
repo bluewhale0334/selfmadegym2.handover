@@ -1,0 +1,16 @@
+:root {
+  --background: #f9f9f9;
+  --card: #ffffff;
+  --text: #2f2a26;
+  --muted: #8b7c6f;
+  --accent: #d9c5a5;
+  --accent-strong: #c5ab7e;
+  --border: #e7ded3;
+  --shadow: 0 18px 40px rgba(59, 45, 30, 0.12);
+}
+
+#root {
+  min-height: 100vh;
+  color: var(--text);
+  background: var(--background);
+}

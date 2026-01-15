@@ -1,0 +1,253 @@
+.dashboard-shell {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
+}
+
+.dashboard-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+}
+
+.dashboard-sidebar {
+  background: #f4efe8;
+  border-right: 1px solid var(--border);
+  padding: 24px 16px;
+}
+
+.dashboard-sidebar nav {
+  display: grid;
+  gap: 8px;
+}
+
+.nav-category-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dashboard-sidebar .nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 10px;
+  transition: background 0.2s;
+  gap: 8px;
+}
+
+.dashboard-sidebar .nav-item-label {
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 0;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.nav-item-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboard-sidebar .nav-item:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.dashboard-sidebar .nav-item.active {
+  background: var(--card);
+  box-shadow: 0 6px 16px rgba(59, 45, 30, 0.08);
+}
+
+.nav-toggle-button {
+  border: none;
+  background: transparent;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.nav-toggle-button:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.nav-expand-icon {
+  font-size: 10px;
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+
+.nav-sub-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 20px;
+  margin-top: 4px;
+}
+
+.nav-sub-item {
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-sub-item:hover {
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--text);
+}
+
+.nav-sub-item.active {
+  background: var(--card);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(59, 45, 30, 0.06);
+}
+
+.nav-show-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  align-items: center;
+}
+
+.nav-show-more-button,
+.nav-show-less-button {
+  border: none;
+  background: transparent;
+  text-align: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+}
+
+.nav-show-more-button:hover,
+.nav-show-less-button:hover {
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--text);
+}
+
+.nav-add-button {
+  border: 1px solid var(--border);
+  background: var(--card);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  padding: 0;
+  line-height: 1;
+}
+
+.nav-add-button:hover {
+  background: var(--accent);
+  color: #3f2f1b;
+  border-color: var(--accent);
+  transform: scale(1.1);
+}
+
+.dashboard-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.dashboard-header h1 {
+  margin: 0;
+  font-size: 26px;
+}
+
+.dashboard-category {
+  background: #f4efe8;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.dashboard-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fffdfb;
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.profile-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.logout-button {
+  border: 1px solid var(--border);
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.dashboard-content {
+  flex: 1;
+  padding: 32px;
+  overflow: hidden;
+  min-width: 0;
+}
+
