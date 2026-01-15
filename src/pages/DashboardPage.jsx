@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { signOut } from "firebase/auth";
-import { doc, getDoc, collection, query, where, orderBy, onSnapshot, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { signOut, signInWithEmailAndPassword } from "firebase/auth";
+import { doc, collection, query, where, orderBy, onSnapshot, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import DatePicker from "./categories/DatePicker";
 import "./DashboardPage.css";
@@ -11,7 +11,7 @@ import HandoverContent from "./categories/HandoverContent";
 import ProgressContent from "./categories/ProgressContent";
 import ChecklistContent from "./categories/ChecklistContent";
 
-function DashboardPage({ user }) {
+function DashboardPage({ user, onShowAuthPage }) {
   const [profile, setProfile] = useState(null);
   const [activeCategory, setActiveCategory] = useState("대쉬보드");
   const [activeDate, setActiveDate] = useState(null);
@@ -20,6 +20,13 @@ function DashboardPage({ user }) {
   const [datePickerCategory, setDatePickerCategory] = useState(null);
   const [visibleDateCounts, setVisibleDateCounts] = useState({}); // 각 카테고리별 표시할 날짜 개수
   const [globalRefreshKey, setGlobalRefreshKey] = useState(0); // 전역 리프레시 키
+  const [showProfileMenu, setShowProfileMenu] = useState(false); // 프로필 메뉴 표시 여부
+  const profileMenuRef = useRef(null); // 프로필 메뉴 참조
+  const [showHandoverModal, setShowHandoverModal] = useState(false); // 인수인계 모달 표시 여부
+  const [customerUsers, setCustomerUsers] = useState([]); // customer 타입 사용자 목록
+  const [selectedUser, setSelectedUser] = useState(null); // 선택된 사용자
+  const [passwordInput, setPasswordInput] = useState(""); // 비밀번호 입력
+  const [handoverError, setHandoverError] = useState(""); // 인수인계 에러 메시지
 
   const tagColors = useMemo(
     () => ({
@@ -309,24 +316,137 @@ function DashboardPage({ user }) {
     }
   };
 
+  // Firestore에서 프로필 가져오기 (실시간 업데이트)
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user) {
-        setProfile(null);
-        return;
-      }
-      try {
-        const snapshot = await getDoc(doc(db, "users", user.uid));
+    if (!user) {
+      setProfile(null);
+      return;
+    }
+
+    const profileRef = doc(db, "users", user.uid);
+    const unsubscribe = onSnapshot(
+      profileRef,
+      (snapshot) => {
         if (snapshot.exists()) {
-          setProfile(snapshot.data());
+          const profileData = snapshot.data();
+          setProfile(profileData);
+          // 디버깅: role 값 확인
+          console.log("Profile loaded:", profileData);
+          console.log("Role:", profileData?.role);
+        } else {
+          console.warn("User profile not found in Firestore");
+          setProfile(null);
+        }
+      },
+      (error) => {
+        console.error("Error fetching profile:", error);
+        setProfile(null);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // customer 타입 사용자 목록 가져오기
+  useEffect(() => {
+    if (!showHandoverModal) return;
+
+    const fetchCustomerUsers = async () => {
+      try {
+        console.log("Fetching customer users...");
+        const q = query(
+          collection(db, "users"),
+          where("user_type", "==", "customer")
+        );
+        const snapshot = await getDocs(q);
+        console.log("Snapshot size:", snapshot.size);
+        const users = [];
+        snapshot.forEach((docSnapshot) => {
+          const data = docSnapshot.data();
+          console.log("User data:", docSnapshot.id, data);
+          // 현재 로그인한 사용자는 제외
+          if (docSnapshot.id === user?.uid) {
+            return;
+          }
+          users.push({
+            id: docSnapshot.id,
+            email: data.email,
+            name: data.name || "사용자",
+            role: data.role || "직책",
+            tagColor: data.tagColor || "gray",
+          });
+        });
+        console.log("Customer users found:", users.length);
+        setCustomerUsers(users);
+        if (users.length === 0) {
+          setHandoverError("등록된 customer 타입 사용자가 없습니다.");
+        } else {
+          setHandoverError("");
         }
       } catch (error) {
-        console.error(error);
+        console.error("Error fetching customer users:", error);
+        console.error("Error code:", error.code);
+        console.error("Error message:", error.message);
+        if (error.code === "failed-precondition") {
+          setHandoverError("Firestore 인덱스가 필요합니다. Firebase 콘솔에서 인덱스를 생성해주세요.");
+        } else {
+          setHandoverError(`사용자 목록을 불러오는데 실패했습니다: ${error.message}`);
+        }
       }
     };
 
-    fetchProfile();
-  }, [user]);
+    fetchCustomerUsers();
+  }, [showHandoverModal, user]);
+
+  // 프로필 메뉴 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    if (showProfileMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showProfileMenu]);
+
+  // 인수인계: 사용자 전환
+  const handleHandover = async (targetUser) => {
+    setSelectedUser(targetUser);
+    setPasswordInput("");
+    setHandoverError("");
+  };
+
+  // 인수인계: 비밀번호 확인 및 사용자 전환
+  const handleConfirmHandover = async () => {
+    if (!selectedUser || !passwordInput) {
+      setHandoverError("비밀번호를 입력하세요.");
+      return;
+    }
+
+    try {
+      setHandoverError("");
+      await signInWithEmailAndPassword(auth, selectedUser.email, passwordInput);
+      // 로그인 성공 시 자동으로 사용자 전환됨 (onAuthStateChanged에서 처리)
+      setShowHandoverModal(false);
+      setSelectedUser(null);
+      setPasswordInput("");
+    } catch (error) {
+      console.error("Handover error:", error);
+      if (error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
+        setHandoverError("비밀번호가 올바르지 않습니다.");
+      } else if (error.code === "auth/user-not-found") {
+        setHandoverError("사용자를 찾을 수 없습니다.");
+      } else {
+        setHandoverError("인수인계에 실패했습니다.");
+      }
+    }
+  };
 
   return (
     <div className="dashboard-shell">
@@ -338,32 +458,86 @@ function DashboardPage({ user }) {
             : activeCategory}
         </div>
         <div className="dashboard-actions">
-          <button className="profile-button" type="button">
-            <span
-              className="profile-dot"
-              style={{
-                backgroundColor: tagColors[profile?.tagColor] ?? "#d9c5a5",
-              }}
-              aria-hidden="true"
-            />
-            <span>
-              {profile?.name ?? user?.displayName ?? "사용자"} -{" "}
-              {profile?.role ?? "직책"}
-            </span>
-          </button>
-          <button
-            className="logout-button"
-            type="button"
-            onClick={async () => {
-              try {
-                await signOut(auth);
-              } catch (error) {
-                console.error(error);
-              }
-            }}
-          >
-            로그아웃
-          </button>
+          {user ? (
+            <>
+              <div className="profile-menu-wrapper" ref={profileMenuRef}>
+                <button
+                  className="profile-button"
+                  type="button"
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                >
+                  <span
+                    className="profile-dot"
+                    style={{
+                      backgroundColor: tagColors[profile?.tagColor] ?? "#d9c5a5",
+                    }}
+                    aria-hidden="true"
+                  />
+                  <span>
+                    {profile?.name ?? user?.displayName ?? "사용자"} -{" "}
+                    {profile?.role || "직책"}
+                  </span>
+                </button>
+                {showProfileMenu && (
+                  <div className="profile-menu">
+                    <button
+                      type="button"
+                      className="profile-menu-item"
+                      onClick={() => {
+                        alert("개발중입니다");
+                        setShowProfileMenu(false);
+                      }}
+                    >
+                      프로필
+                    </button>
+                    <button
+                      type="button"
+                      className="profile-menu-item"
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        setShowHandoverModal(true);
+                        setSelectedUser(null);
+                        setPasswordInput("");
+                        setHandoverError("");
+                      }}
+                    >
+                      인수인계
+                    </button>
+                  </div>
+                )}
+              </div>
+              <button
+                className="logout-button"
+                type="button"
+                onClick={async () => {
+                  try {
+                    await signOut(auth);
+                  } catch (error) {
+                    console.error(error);
+                  }
+                }}
+              >
+                로그아웃
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="login-button"
+                type="button"
+                onClick={() => onShowAuthPage?.("login")}
+              >
+                로그인
+              </button>
+              <button
+                className="signup-button"
+                type="button"
+                onClick={() => onShowAuthPage?.("signup")}
+              >
+                회원가입
+              </button>
+            </>
+          )}
         </div>
       </header>
       <div className="dashboard-body">
@@ -473,6 +647,123 @@ function DashboardPage({ user }) {
           </section>
         </main>
       </div>
+      {/* 인수인계 모달 */}
+      {showHandoverModal && (
+        <div className="handover-modal-overlay" onClick={() => setShowHandoverModal(false)}>
+          <div className="handover-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="handover-modal-header">
+              <h2>인수인계</h2>
+              <button
+                type="button"
+                className="handover-modal-close"
+                onClick={() => {
+                  setShowHandoverModal(false);
+                  setSelectedUser(null);
+                  setPasswordInput("");
+                  setHandoverError("");
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="handover-modal-content">
+              {!selectedUser ? (
+                <>
+                  <p className="handover-instruction">전환할 사용자를 선택하세요</p>
+                  {handoverError && (
+                    <p className="handover-error" style={{ marginBottom: "16px" }}>
+                      {handoverError}
+                    </p>
+                  )}
+                  <div className="customer-users-list">
+                    {customerUsers.length === 0 && !handoverError ? (
+                      <p className="handover-empty">등록된 사용자가 없습니다.</p>
+                    ) : customerUsers.length > 0 ? (
+                      customerUsers.map((customerUser) => (
+                        <button
+                          key={customerUser.id}
+                          type="button"
+                          className="customer-user-item"
+                          onClick={() => handleHandover(customerUser)}
+                        >
+                          <span
+                            className="customer-user-dot"
+                            style={{
+                              backgroundColor: tagColors[customerUser.tagColor] ?? "#d9c5a5",
+                            }}
+                          />
+                          <div className="customer-user-info">
+                            <span className="customer-user-name">{customerUser.name}</span>
+                            <span className="customer-user-role">{customerUser.role}</span>
+                          </div>
+                        </button>
+                      ))
+                    ) : null}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="selected-user-info">
+                    <span
+                      className="selected-user-dot"
+                      style={{
+                        backgroundColor: tagColors[selectedUser.tagColor] ?? "#d9c5a5",
+                      }}
+                    />
+                    <div>
+                      <span className="selected-user-name">{selectedUser.name}</span>
+                      <span className="selected-user-role">{selectedUser.role}</span>
+                    </div>
+                  </div>
+                  <div className="handover-password-form">
+                    <label>
+                      비밀번호
+                      <input
+                        type="password"
+                        placeholder="비밀번호를 입력하세요"
+                        value={passwordInput}
+                        onChange={(e) => {
+                          setPasswordInput(e.target.value);
+                          setHandoverError("");
+                        }}
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") {
+                            handleConfirmHandover();
+                          }
+                        }}
+                        autoFocus
+                      />
+                    </label>
+                    {handoverError && (
+                      <p className="handover-error">{handoverError}</p>
+                    )}
+                    <div className="handover-actions">
+                      <button
+                        type="button"
+                        className="handover-cancel-button"
+                        onClick={() => {
+                          setSelectedUser(null);
+                          setPasswordInput("");
+                          setHandoverError("");
+                        }}
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="button"
+                        className="handover-confirm-button"
+                        onClick={handleConfirmHandover}
+                      >
+                        확인
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

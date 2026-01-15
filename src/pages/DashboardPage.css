@@ -214,6 +214,10 @@
   gap: 10px;
 }
 
+.profile-menu-wrapper {
+  position: relative;
+}
+
 .profile-button {
   display: inline-flex;
   align-items: center;
@@ -225,6 +229,289 @@
   font-size: 13px;
   color: var(--text);
   font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.profile-button:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.profile-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 150px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.profile-menu-item {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.profile-menu-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.profile-menu-item:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+}
+
+/* 인수인계 모달 */
+.handover-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.handover-modal {
+  background: var(--card);
+  border-radius: 20px;
+  width: min(500px, 90vw);
+  max-height: 80vh;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.handover-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.handover-modal-header h2 {
+  margin: 0;
+  font-size: 24px;
+  color: var(--text);
+}
+
+.handover-modal-close {
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.handover-modal-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text);
+}
+
+.handover-modal-content {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.handover-instruction {
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.customer-users-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.customer-user-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  width: 100%;
+}
+
+.customer-user-item:hover {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.customer-user-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.customer-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.customer-user-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.customer-user-role {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.handover-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.selected-user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #f4efe8;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.selected-user-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.selected-user-info > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.selected-user-name {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.selected-user-role {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.handover-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.handover-password-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.handover-password-form input {
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--card);
+  color: var(--text);
+  transition: border-color 0.2s;
+}
+
+.handover-password-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.handover-error {
+  margin: 0;
+  padding: 12px;
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 8px;
+  color: #c33;
+  font-size: 13px;
+}
+
+.handover-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.handover-cancel-button,
+.handover-confirm-button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid var(--border);
+}
+
+.handover-cancel-button {
+  background: transparent;
+  color: var(--muted);
+}
+
+.handover-cancel-button:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text);
+}
+
+.handover-confirm-button {
+  background: var(--accent);
+  color: #3f2f1b;
+  border-color: var(--accent);
+}
+
+.handover-confirm-button:hover {
+  background: #d9c5a5;
+  border-color: #d9c5a5;
 }
 
 .profile-dot {
@@ -242,6 +529,41 @@
   font-size: 13px;
   color: var(--muted);
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logout-button:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text);
+}
+
+.login-button,
+.signup-button {
+  border: 1px solid var(--border);
+  background: transparent;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.login-button:hover,
+.signup-button:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.signup-button {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #3f2f1b;
+}
+
+.signup-button:hover {
+  background: #d9c5a5;
+  border-color: #d9c5a5;
 }
 
 .dashboard-content {

@@ -16,9 +16,9 @@ import {
 import { auth, db } from "../firebase";
 import "./AuthPage.css";
 
-function AuthPage({ user }) {
+function AuthPage({ user, onClose, initialMode = "login" }) {
   const [status, setStatus] = useState("");
-  const [mode, setMode] = useState("login");
+  const [mode, setMode] = useState(initialMode);
   const [loginForm, setLoginForm] = useState({
     email: "",
     password: "",
@@ -83,8 +83,20 @@ function AuthPage({ user }) {
     <div className="auth-shell">
       <div className="auth-card">
         <div className="auth-header">
-          <h1>Handover App</h1>
-          <p>업무 인수인계를 더 간단하게</p>
+          <div>
+            <h1>Handover App</h1>
+            <p>업무 인수인계를 더 간단하게</p>
+          </div>
+          {onClose && (
+            <button
+              type="button"
+              className="auth-close-button"
+              onClick={onClose}
+              aria-label="닫기"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         <div className="auth-tabs">
@@ -281,6 +293,9 @@ function AuthPage({ user }) {
                   role: signupForm.role,
                   phone: signupForm.phone,
                   tagColor: signupForm.tagColor,
+                  // user_type: 기본값은 "customer", "admin"도 가능하지만 회원가입 폼에서는 선택 불가
+                  // 초기 admin 아이디는 별도로 설정하고, 이후 admin 가입 시 승인 기능 추가 예정
+                  user_type: "customer",
                   createdAt: serverTimestamp(),
                   lastLoginAt: serverTimestamp(),
                 });
