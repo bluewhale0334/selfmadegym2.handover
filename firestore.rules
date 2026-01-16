@@ -1,62 +1,34 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 현재 사용자의 user_type 확인 함수
+    
+    // 관리자 여부를 확인하는 공통 함수 (경로 최적화)
     function isAdmin() {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.user_type == "admin";
-    }
-
-
-    match /tagColors/{colorId} {
-      allow read: if true;
-      // 자신의 uid로 생성하거나, admin이 생성 (isAdmin 체크 시 문서가 없을 수 있으므로 exists 확인)
-      allow create: if request.auth != null
-        && (request.resource.data.uid == request.auth.uid 
-            || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
-                && isAdmin()));
-      allow update: if request.auth != null
-        && (resource.data.uid == request.auth.uid || isAdmin());
-      allow delete: if request.auth != null
-        && (resource.data.uid == request.auth.uid || isAdmin());
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return request.auth != null && userDoc != null && userDoc.data.user_type == "admin";
     }
 
     match /users/{userId} {
-      // 자신의 문서 생성 (회원가입)
-      // request.auth.uid가 userId와 일치하고, 인증된 사용자여야 함
+      // 생성: 인증된 사용자가 자신의 UID로 문서를 만들 때 허용
       allow create: if request.auth != null && request.auth.uid == userId;
       
-      // 자신의 문서는 읽기/쓰기 가능
-      // 또는 인증된 사용자는 customer 타입 사용자 목록 조회 가능 (인수인계 기능)
-      // admin은 모든 사용자 문서 읽기 가능
-      allow read: if request.auth != null 
-        && (request.auth.uid == userId 
-            || resource.data.user_type == "customer" 
-            || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && isAdmin()));
-      // 자신의 문서는 업데이트 가능
-      // admin은 다른 사용자의 user_type, tagColor, email, disabled 필드 변경 가능
-      allow update: if request.auth != null 
-        && (request.auth.uid == userId 
-            || (isAdmin() && (
-                // admin이 변경할 수 있는 필드들: user_type, tagColor, email, disabled
-                // 이 필드들만 변경하는 경우 (다른 필드는 변경하지 않음) 허용
-                request.resource.data.diff(resource.data).affectedKeys().hasOnly(['user_type'])
-                || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tagColor'])
-                || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email'])
-                || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['disabled'])
-                || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['user_type', 'tagColor'])
-                || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['user_type', 'email'])
-                || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['user_type', 'disabled'])
-                || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tagColor', 'email'])
-                || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tagColor', 'disabled'])
-                || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email', 'disabled'])
-                || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email', 'tagColor', 'disabled'])
-                || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['user_type', 'tagColor', 'email'])
-                || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['user_type', 'tagColor', 'disabled'])
-                || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['user_type', 'email', 'disabled'])
-                || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['user_type', 'tagColor', 'email', 'disabled'])
-              )));
+      // 읽기: 1.본인 2.이미 생성된 customer 타입 유저 3.관리자
+      // resource != null 체크를 통해 문서가 없는 상태에서의 에러 방지
+      allow read: if request.auth != null && (
+        request.auth.uid == userId || 
+        (resource != null && resource.data.user_type == "customer") || 
+        isAdmin()
+      );
+      
+      // 업데이트 및 삭제
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow delete: if request.auth != null && isAdmin();
+    }
+
+    match /tagColors/{colorId} {
+      allow read: if true;
+      allow create: if request.auth != null && (request.resource.data.uid == request.auth.uid || isAdmin());
+      allow update, delete: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
     }
 
     // 공통 함수들

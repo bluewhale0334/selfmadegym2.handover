@@ -22,12 +22,30 @@ function App() {
       console.error(error);
     });
 
+    const waitForUserDoc = async (uid, maxRetries = 5, delayMs = 500) => {
+      for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+        const docSnapshot = await getDoc(doc(db, "users", uid));
+        if (docSnapshot.exists()) {
+          return docSnapshot;
+        }
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+      return null;
+    };
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         // Firestore에서 사용자 정보 확인 (disabled 체크)
         try {
-          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-          if (userDoc.exists()) {
+          let userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          if (!userDoc.exists()) {
+            const pendingUid = sessionStorage.getItem("pendingUserDocUid");
+            if (pendingUid === currentUser.uid) {
+              userDoc = await waitForUserDoc(currentUser.uid);
+            }
+          }
+
+          if (userDoc && userDoc.exists()) {
             const userData = userDoc.data();
             // disabled 플래그가 true이거나 email이 빈 문자열이면 자동 로그아웃
             if (userData.disabled === true || !userData.email || userData.email === "") {
@@ -39,6 +57,7 @@ function App() {
             }
           } else {
             // Firestore에 사용자 문서가 없으면 로그아웃
+            sessionStorage.removeItem("pendingUserDocUid");
             console.log("User document not found in Firestore, signing out...");
             await signOut(auth);
             setUser(null);

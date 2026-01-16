@@ -300,45 +300,83 @@ function AuthPage({ user, onClose, initialMode = "login" }) {
                 const selectedColor = tagColorOptions.find(
                   (option) => option.value === signupForm.tagColor
                 );
+                const tagColorRef = doc(db, "tagColors", signupForm.tagColor);
+                const existingColorDoc = await getDoc(tagColorRef);
+                if (existingColorDoc.exists()) {
+                  setStatus("이미 사용 중인 태그 색상입니다.");
+                  return;
+                }
+
+                // Firebase Auth 사용자 생성
                 const userCredential = await createUserWithEmailAndPassword(
                   auth,
                   signupForm.email,
                   signupForm.password
                 );
+
+                const pendingUserDocKey = "pendingUserDocUid";
+                sessionStorage.setItem(pendingUserDocKey, userCredential.user.uid);
+
+                // 프로필 업데이트
                 await updateProfile(userCredential.user, {
                   displayName: signupForm.name,
                 });
-                await setDoc(doc(db, "users", userCredential.user.uid), {
-                  email: signupForm.email,
-                  name: signupForm.name,
-                  role: signupForm.role,
-                  phone: signupForm.phone,
-                  tagColor: signupForm.tagColor,
-                  // user_type: 기본값은 "customer", "admin"도 가능하지만 회원가입 폼에서는 선택 불가
-                  // 초기 admin 아이디는 별도로 설정하고, 이후 admin 가입 시 승인 기능 추가 예정
-                  user_type: "customer",
-                  createdAt: serverTimestamp(),
-                  lastLoginAt: serverTimestamp(),
-                });
-                await setDoc(doc(db, "tagColors", signupForm.tagColor), {
-                  uid: userCredential.user.uid,
-                  name: signupForm.name,
-                  color: selectedColor?.color ?? "",
-                  createdAt: serverTimestamp(),
-                });
+
+                // 인증 상태 최신화 (Firestore Rules에 전파)
+                await userCredential.user.reload();
+                await userCredential.user.getIdTokenResult(true);
+
+                // Firestore users 문서 생성
+                try {
+                  await setDoc(doc(db, "users", userCredential.user.uid), {
+                    email: signupForm.email,
+                    name: signupForm.name,
+                    role: signupForm.role,
+                    phone: signupForm.phone,
+                    tagColor: signupForm.tagColor,
+                    user_type: "customer",
+                    createdAt: serverTimestamp(),
+                    lastLoginAt: serverTimestamp(),
+                  });
+                } catch (docError) {
+                  console.error("Failed to create users document:", docError);
+                  throw docError;
+                }
+
+                // tagColors 문서 생성
+                try {
+                  await setDoc(tagColorRef, {
+                    uid: userCredential.user.uid,
+                    name: signupForm.name,
+                    color: selectedColor?.color ?? "",
+                    createdAt: serverTimestamp(),
+                  });
+                } catch (tagError) {
+                  console.error("Failed to create tagColors document:", tagError);
+                  throw tagError;
+                }
+
+                sessionStorage.removeItem(pendingUserDocKey);
                 setReservedColors((prev) => ({
                   ...prev,
                   [signupForm.tagColor]: signupForm.name,
                 }));
                 setStatus("회원가입 완료");
               } catch (error) {
-                console.error(error);
+                console.error("Signup error:", error);
+                console.error("Error code:", error.code);
+                console.error("Error message:", error.message);
+                sessionStorage.removeItem("pendingUserDocUid");
+                
                 if (error.code === "auth/email-already-in-use") {
                   setStatus("이미 가입된 이메일입니다.");
                 } else if (error.code === "auth/weak-password") {
                   setStatus("비밀번호가 너무 약합니다.");
+                } else if (error.code === "permission-denied" || error.message?.includes("Missing or insufficient permissions")) {
+                  setStatus("권한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+                  console.error("Firestore permission error - this may be a timing issue with Firebase Auth state propagation");
                 } else {
-                  setStatus("회원가입 실패");
+                  setStatus(`회원가입 실패: ${error.message || error.code || "알 수 없는 오류"}`);
                 }
               } finally {
                 setIsLoading(false);
