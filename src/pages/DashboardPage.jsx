@@ -18,9 +18,10 @@ function DashboardPage({ user, onShowAuthPage }) {
   const [activeCategory, setActiveCategory] = useState("대쉬보드");
   const [activeDate, setActiveDate] = useState(null);
   const [expandedCategories, setExpandedCategories] = useState({});
+  const [expandedYears, setExpandedYears] = useState({}); // 각 카테고리의 연도별 펼침 상태 { "업무 지시": { "2024": true, "2025": false } }
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerCategory, setDatePickerCategory] = useState(null);
-  const [visibleDateCounts, setVisibleDateCounts] = useState({}); // 각 카테고리별 표시할 날짜 개수
+  const [visibleDateCounts, setVisibleDateCounts] = useState({}); // 각 카테고리-연도별 표시할 날짜 개수 { "업무 지시-2024": 5 }
   const [globalRefreshKey, setGlobalRefreshKey] = useState(0); // 전역 리프레시 키
   const [showProfileMenu, setShowProfileMenu] = useState(false); // 프로필 메뉴 표시 여부
   const profileMenuRef = useRef(null); // 프로필 메뉴 참조
@@ -135,6 +136,60 @@ function DashboardPage({ user, onShowAuthPage }) {
     const month = date.getMonth() + 1;
     const day = date.getDate();
     return `${month}월 ${day}일`;
+  };
+
+  // 날짜에서 연도 추출
+  const getYearFromDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.getFullYear().toString();
+  };
+
+  // 날짜 목록을 연도별로 그룹화
+  const groupDatesByYear = (dates) => {
+    const grouped = {};
+    dates.forEach((date) => {
+      const year = getYearFromDate(date);
+      if (!grouped[year]) {
+        grouped[year] = [];
+      }
+      grouped[year].push(date);
+    });
+    // 연도별로 정렬 (내림차순), 각 연도 내 날짜도 정렬 (내림차순)
+    const sortedYears = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+    const result = {};
+    sortedYears.forEach((year) => {
+      result[year] = grouped[year].sort((a, b) => b.localeCompare(a));
+    });
+    return result;
+  };
+
+  // 연도 토글 핸들러
+  const handleYearToggle = (categoryLabel, year, event) => {
+    event.stopPropagation();
+    setExpandedYears((prev) => ({
+      ...prev,
+      [categoryLabel]: {
+        ...prev[categoryLabel],
+        [year]: !prev[categoryLabel]?.[year],
+      },
+    }));
+  };
+
+  // 연도별 날짜 개수 관리
+  const handleShowMoreDatesInYear = (categoryLabel, year) => {
+    const key = `${categoryLabel}-${year}`;
+    setVisibleDateCounts((prev) => ({
+      ...prev,
+      [key]: (prev[key] || 5) + 5,
+    }));
+  };
+
+  const handleShowLessDatesInYear = (categoryLabel, year) => {
+    const key = `${categoryLabel}-${year}`;
+    setVisibleDateCounts((prev) => ({
+      ...prev,
+      [key]: Math.max(5, (prev[key] || 5) - 5),
+    }));
   };
 
   const handleCategoryClick = (categoryLabel) => {
@@ -458,7 +513,7 @@ function DashboardPage({ user, onShowAuthPage }) {
         <h1>selfmadegym2</h1>
         <div className="dashboard-category">
           {activeDate
-            ? `${activeCategory} > ${formatDate(activeDate)}`
+            ? `${activeCategory} > ${getYearFromDate(activeDate)} > ${formatDate(activeDate)}`
             : activeCategory}
         </div>
         <div className="dashboard-actions">
@@ -596,52 +651,80 @@ function DashboardPage({ user, onShowAuthPage }) {
                       )}
                     </div>
                   </div>
-                  {hasDates && isExpanded && (
-                    <div className="nav-sub-items">
-                      {dates
-                        .slice(0, visibleDateCounts[category.label] || 5)
-                        .map((date) => (
-                          <button
-                            key={date}
-                            className={[
-                              "nav-sub-item",
-                              isDateCategoryActive(category.label, date)
-                                ? "active"
-                                : "",
-                            ]
-                              .filter(Boolean)
-                              .join(" ")}
-                            type="button"
-                            onClick={() => handleDateClick(category.label, date)}
-                          >
-                            {formatDate(date)}
-                          </button>
-                        ))}
-                      {(dates.length > (visibleDateCounts[category.label] || 5) ||
-                        (visibleDateCounts[category.label] || 5) > 5) && (
-                        <div className="nav-show-buttons">
-                          {dates.length > (visibleDateCounts[category.label] || 5) && (
-                            <button
-                              type="button"
-                              className="nav-show-more-button"
-                              onClick={() => handleShowMoreDates(category.label)}
-                            >
-                              ▼ 더보기
-                            </button>
-                          )}
-                          {(visibleDateCounts[category.label] || 5) > 5 && (
-                            <button
-                              type="button"
-                              className="nav-show-less-button"
-                              onClick={() => handleShowLessDates(category.label)}
-                            >
-                              ▲ 접기
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {hasDates && isExpanded && (() => {
+                    const datesByYear = groupDatesByYear(dates);
+                    const years = Object.keys(datesByYear);
+                    
+                    return (
+                      <div className="nav-sub-items">
+                        {years.map((year) => {
+                          const yearDates = datesByYear[year];
+                          const yearKey = `${category.label}-${year}`;
+                          const isYearExpanded = expandedYears[category.label]?.[year] ?? true;
+                          const visibleCount = visibleDateCounts[yearKey] || 5;
+                          const visibleDates = yearDates.slice(0, visibleCount);
+                          
+                          return (
+                            <div key={year} className="nav-year-group">
+                              <button
+                                type="button"
+                                className="nav-year-item"
+                                onClick={(e) => handleYearToggle(category.label, year, e)}
+                              >
+                                <span className="nav-year-toggle">
+                                  {isYearExpanded ? "▼" : "▶"}
+                                </span>
+                                <span className="nav-year-label">{year}</span>
+                              </button>
+                              {isYearExpanded && (
+                                <div className="nav-dates-in-year">
+                                  {visibleDates.map((date) => (
+                                    <button
+                                      key={date}
+                                      className={[
+                                        "nav-sub-item",
+                                        isDateCategoryActive(category.label, date)
+                                          ? "active"
+                                          : "",
+                                      ]
+                                        .filter(Boolean)
+                                        .join(" ")}
+                                      type="button"
+                                      onClick={() => handleDateClick(category.label, date)}
+                                    >
+                                      {formatDate(date)}
+                                    </button>
+                                  ))}
+                                  {(yearDates.length > visibleCount || visibleCount > 5) && (
+                                    <div className="nav-show-buttons">
+                                      {yearDates.length > visibleCount && (
+                                        <button
+                                          type="button"
+                                          className="nav-show-more-button"
+                                          onClick={() => handleShowMoreDatesInYear(category.label, year)}
+                                        >
+                                          ▼ 더보기
+                                        </button>
+                                      )}
+                                      {visibleCount > 5 && (
+                                        <button
+                                          type="button"
+                                          className="nav-show-less-button"
+                                          onClick={() => handleShowLessDatesInYear(category.label, year)}
+                                        >
+                                          ▲ 접기
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}

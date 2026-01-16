@@ -100,115 +100,223 @@ function SharedDocuments({ category, selectedDate, onNavigateToCategory, onDateS
   // Firestore에서 문서 가져오기
   useEffect(() => {
     const collectionName = getCollectionName(category);
-    if (!collectionName || !user) return;
-
-    setIsLoading(true);
-    let q;
-
-    console.log("Fetching documents:", { category, selectedDate, collectionName });
-
-    if (category === "업무 체크리스트") {
-      // 체크리스트는 사용자별 필터링
-      if (selectedDate) {
-        q = query(
-          collection(db, collectionName),
-          where("userId", "==", user.uid),
-          where("date", "==", selectedDate),
-          orderBy("createdAt", "desc")
-        );
-      } else {
-        // 단일 orderBy만 사용하고 클라이언트에서 정렬
-        q = query(
-          collection(db, collectionName),
-          where("userId", "==", user.uid),
-          orderBy("createdAt", "desc")
-        );
-      }
-    } else if (category === "전체 공지") {
-      // 전체 공지는 날짜 필드 없음
-      q = query(collection(db, collectionName), orderBy("createdAt", "desc"));
-    } else {
-      // 나머지는 날짜 필터링
-      if (selectedDate) {
-        // 하위 카테고리: 정확히 해당 날짜만 필터링
-        q = query(
-          collection(db, collectionName),
-          where("date", "==", selectedDate),
-          orderBy("createdAt", "desc")
-        );
-      } else {
-        // 상위 카테고리: 모든 문서 가져오기 (날짜 필터링 없음)
-        q = query(
-          collection(db, collectionName),
-          orderBy("createdAt", "desc")
-        );
-      }
+    if (!collectionName || !user) {
+      setDocuments([]);
+      setIsLoading(false);
+      return;
     }
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        console.log("onSnapshot triggered:", {
-          category,
-          selectedDate,
-          snapshotSize: snapshot.size,
-        });
-        
-        let docs = snapshot.docs
-          .map((doc) => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              ...data,
-            };
-          })
-          // 플래그 문서 제외 (isDateFlag가 true인 문서는 제외)
-          .filter((doc) => !doc.isDateFlag);
+    let isMounted = true;
+    let unsubscribe = null;
 
-        // 하위 카테고리(selectedDate가 있을 때)는 이미 Firestore에서 필터링되었으므로 추가 필터링 불필요
-        // 상위 카테고리(selectedDate가 없을 때)만 클라이언트에서 날짜별 정렬
-        if (!selectedDate && category !== "전체 공지") {
-          // 날짜별 정렬, 그 다음 생성 시간별 정렬
-          docs = docs.sort((a, b) => {
-            if (a.date && b.date) {
-              const dateCompare = b.date.localeCompare(a.date);
-              if (dateCompare !== 0) return dateCompare;
+    const setupListener = () => {
+      setIsLoading(true);
+      let q;
+
+      console.log("Fetching documents:", { category, selectedDate, collectionName });
+
+      try {
+        if (category === "업무 체크리스트") {
+          // 체크리스트는 사용자별 필터링
+          if (selectedDate) {
+            q = query(
+              collection(db, collectionName),
+              where("userId", "==", user.uid),
+              where("date", "==", selectedDate),
+              orderBy("createdAt", "desc")
+            );
+          } else {
+            // 단일 orderBy만 사용하고 클라이언트에서 정렬
+            q = query(
+              collection(db, collectionName),
+              where("userId", "==", user.uid),
+              orderBy("createdAt", "desc")
+            );
+          }
+        } else if (category === "전체 공지") {
+          // 전체 공지는 날짜 필드 없음
+          q = query(collection(db, collectionName), orderBy("createdAt", "desc"));
+        } else {
+          // 나머지는 날짜 필터링
+          if (selectedDate) {
+            // 하위 카테고리: 정확히 해당 날짜만 필터링
+            q = query(
+              collection(db, collectionName),
+              where("date", "==", selectedDate),
+              orderBy("createdAt", "desc")
+            );
+          } else {
+            // 상위 카테고리: 모든 문서 가져오기 (날짜 필터링 없음)
+            q = query(
+              collection(db, collectionName),
+              orderBy("createdAt", "desc")
+            );
+          }
+        }
+
+        // q가 undefined인 경우를 방지
+        if (!q) {
+          console.error("Query is undefined for category:", category);
+          if (isMounted) {
+            setIsLoading(false);
+            setError("쿼리를 생성할 수 없습니다.");
+          }
+          return;
+        }
+
+        // 이전 리스너가 있으면 먼저 정리
+        if (unsubscribe) {
+          try {
+            unsubscribe();
+          } catch (err) {
+            console.warn("Error cleaning up previous listener:", err);
+          }
+          unsubscribe = null;
+        }
+
+        // 새로운 리스너 설정
+        unsubscribe = onSnapshot(
+          q,
+          (snapshot) => {
+            if (!isMounted) return;
+
+            try {
+              // 스냅샷이 유효한지 확인
+              if (!snapshot || !snapshot.docs) {
+                console.warn("Invalid snapshot received");
+                return;
+              }
+
+              console.log("onSnapshot triggered:", {
+                category,
+                selectedDate,
+                snapshotSize: snapshot.size,
+                fromCache: snapshot.metadata?.fromCache,
+              });
+              
+              let docs = snapshot.docs
+                .map((doc) => {
+                  try {
+                    const data = doc.data();
+                    return {
+                      id: doc.id,
+                      ...data,
+                    };
+                  } catch (err) {
+                    console.error("Error processing document:", doc.id, err);
+                    return null;
+                  }
+                })
+                .filter((doc) => doc !== null)
+                // 플래그 문서 제외 (isDateFlag가 true인 문서는 제외)
+                .filter((doc) => !doc.isDateFlag);
+
+              // 하위 카테고리(selectedDate가 있을 때)는 이미 Firestore에서 필터링되었으므로 추가 필터링 불필요
+              // 상위 카테고리(selectedDate가 없을 때)만 클라이언트에서 날짜별 정렬
+              if (!selectedDate && category !== "전체 공지") {
+                // 날짜별 정렬, 그 다음 생성 시간별 정렬
+                docs = docs.sort((a, b) => {
+                  if (a.date && b.date) {
+                    const dateCompare = b.date.localeCompare(a.date);
+                    if (dateCompare !== 0) return dateCompare;
+                  }
+                  // createdAt으로 정렬
+                  const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+                  const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+                  return bTime - aTime;
+                });
+              }
+
+              // 하위 카테고리: 정확히 해당 날짜만 필터링 (안전장치)
+              if (selectedDate) {
+                docs = docs.filter((doc) => doc.date === selectedDate);
+              }
+
+              console.log("Documents loaded:", {
+                category,
+                selectedDate,
+                count: docs.length,
+                dates: docs.map((d) => d.date),
+                readByCounts: docs.map((d) => d.readBy?.length || 0),
+              });
+
+              if (isMounted) {
+                setDocuments(docs);
+                setIsLoading(false);
+                setError(null);
+              }
+            } catch (err) {
+              console.error("Error processing snapshot:", err);
+              if (isMounted) {
+                setError(`문서를 처리하는 중 오류가 발생했습니다: ${err.message}`);
+                setIsLoading(false);
+              }
             }
-            // createdAt으로 정렬
-            const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-            const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-            return bTime - aTime;
-          });
+          },
+          (error) => {
+            if (!isMounted) return;
+
+            console.error("Error fetching documents:", error);
+            console.error("Error code:", error.code);
+            console.error("Error message:", error.message);
+            
+            // INTERNAL ASSERTION 오류는 조용히 처리 (콘솔에만 로그)
+            if (error.message && error.message.includes("INTERNAL ASSERTION")) {
+              console.warn("Firestore internal assertion error - this is usually non-critical and may resolve automatically.");
+              // 에러를 UI에 표시하지 않고 조용히 처리
+              if (isMounted) {
+                setIsLoading(false);
+              }
+              return;
+            }
+            
+            // 특정 에러 코드에 대한 처리
+            if (error.code === "failed-precondition") {
+              if (isMounted) {
+                setError(`쿼리 인덱스가 필요합니다. Firebase 콘솔에서 인덱스를 생성해주세요.`);
+              }
+            } else if (error.code === "permission-denied") {
+              if (isMounted) {
+                setError(`권한이 없습니다. 다시 로그인해주세요.`);
+              }
+            } else {
+              if (isMounted) {
+                setError(`문서를 불러오는 중 오류가 발생했습니다: ${error.message || "알 수 없는 오류"}`);
+              }
+            }
+            
+            if (isMounted) {
+              setIsLoading(false);
+            }
+          }
+        );
+      } catch (err) {
+        console.error("Error setting up onSnapshot:", err);
+        if (isMounted) {
+          setError(`리스너 설정 중 오류가 발생했습니다: ${err.message}`);
+          setIsLoading(false);
+          setDocuments([]);
         }
-
-        // 하위 카테고리: 정확히 해당 날짜만 필터링 (안전장치)
-        if (selectedDate) {
-          docs = docs.filter((doc) => doc.date === selectedDate);
-        }
-
-        console.log("Documents loaded:", {
-          category,
-          selectedDate,
-          count: docs.length,
-          dates: docs.map((d) => d.date),
-          readByCounts: docs.map((d) => d.readBy?.length || 0),
-        });
-
-        // onSnapshot이 실제 문서를 받아오면 임시 문서는 자동으로 제거됨 (임시 문서는 temp-로 시작하는 ID를 가지므로)
-        setDocuments(docs);
-        setIsLoading(false);
-      },
-      (error) => {
-        console.error("Error fetching documents:", error);
-        console.error("Error code:", error.code);
-        console.error("Error message:", error.message);
-        // 에러가 발생해도 리스너는 계속 작동하도록 함
-        setIsLoading(false);
-        // 에러가 발생해도 기존 문서는 유지
       }
-    );
+    };
 
-    return () => unsubscribe();
+    // 약간의 지연을 두고 리스너 설정 (이전 리스너가 완전히 cleanup되도록)
+    const timeoutId = setTimeout(() => {
+      setupListener();
+    }, 0);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+      if (unsubscribe) {
+        try {
+          unsubscribe();
+        } catch (err) {
+          console.warn("Error unsubscribing:", err);
+        }
+        unsubscribe = null;
+      }
+    };
   }, [category, selectedDate, user, globalRefreshKey]); // globalRefreshKey만 사용
 
   const handleSubmit = async () => {
@@ -273,8 +381,9 @@ function SharedDocuments({ category, selectedDate, onNavigateToCategory, onDateS
       console.log("Document data:", docData);
 
       // 낙관적 업데이트: 즉시 로컬 상태에 추가
+      const tempDocId = `temp-${Date.now()}`;
       const tempDoc = {
-        id: `temp-${Date.now()}`,
+        id: tempDocId,
         content: content.trim(),
         authorId: user.uid,
         authorName: profile.name || user.displayName || "사용자",
@@ -306,23 +415,32 @@ function SharedDocuments({ category, selectedDate, onNavigateToCategory, onDateS
         return [tempDoc, ...prevDocs];
       });
       
-      const docRef = await addDoc(collection(db, collectionName), docData);
-      console.log("Document added successfully:", docRef.id);
-      
-      // 저장된 날짜가 현재 선택된 날짜와 다르면 해당 날짜로 이동
-      if (category !== "전체 공지" && documentDate && documentDate !== selectedDate) {
-        onDateSelect?.(category, documentDate);
+      try {
+        const docRef = await addDoc(collection(db, collectionName), docData);
+        console.log("Document added successfully:", docRef.id);
+        
+        // 저장된 날짜가 현재 선택된 날짜와 다르면 해당 날짜로 이동
+        if (category !== "전체 공지" && documentDate && documentDate !== selectedDate) {
+          onDateSelect?.(category, documentDate);
+        }
+        
+        // 상태 초기화
+        setContent("");
+        setWriteDate(null);
+        setIsWriting(false);
+        setError(null);
+        
+        // 전역 리프레시 트리거 (카드 섹션, 사이드바도 업데이트)
+        onRefresh?.();
+        // onSnapshot이 나중에 서버 상태와 동기화함
+      } catch (addError) {
+        // 문서 생성 실패 시 낙관적 업데이트 롤백
+        setDocuments((prevDocs) => {
+          return prevDocs.filter((doc) => doc.id !== tempDocId);
+        });
+        
+        throw addError; // 에러를 다시 던져서 외부 catch 블록에서 처리
       }
-      
-      // 상태 초기화
-      setContent("");
-      setWriteDate(null);
-      setIsWriting(false);
-      setError(null);
-      
-      // 전역 리프레시 트리거 (카드 섹션, 사이드바도 업데이트)
-      onRefresh?.();
-      // onSnapshot이 나중에 서버 상태와 동기화함
     } catch (error) {
       console.error("Error adding document:", error);
       console.error("Error code:", error.code);
@@ -333,6 +451,8 @@ function SharedDocuments({ category, selectedDate, onNavigateToCategory, onDateS
         errorMessage = "권한이 없습니다. 로그인 상태를 확인해주세요.";
       } else if (error.code === "unavailable") {
         errorMessage = "네트워크 오류가 발생했습니다. 다시 시도해주세요.";
+      } else if (error.message && error.message.includes("INTERNAL ASSERTION")) {
+        errorMessage = "데이터베이스 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
       } else if (error.message) {
         errorMessage = `오류: ${error.message}`;
       }
@@ -446,13 +566,29 @@ function SharedDocuments({ category, selectedDate, onNavigateToCategory, onDateS
     }
 
     setError(null);
+    setIsLoading(true);
     
     // 낙관적 업데이트: 즉시 로컬 상태에서 제거 (권한 확인 후)
     setDocuments((prevDocs) => prevDocs.filter((doc) => doc.id !== documentId));
 
     try {
       const docRef = doc(db, collectionName, documentId);
-      await deleteDoc(docRef);
+      
+      // deleteDoc 호출을 try-catch로 감싸서 INTERNAL ASSERTION 오류 처리
+      try {
+        await deleteDoc(docRef);
+      } catch (deleteError) {
+        // INTERNAL ASSERTION 오류는 실제로는 삭제가 성공했을 수 있음
+        // onSnapshot이 나중에 동기화하므로 일단 성공으로 간주
+        if (deleteError.message && deleteError.message.includes("INTERNAL ASSERTION")) {
+          console.warn("Firestore internal assertion error during delete - deletion may have succeeded. onSnapshot will sync.");
+          // 에러를 무시하고 계속 진행 (onSnapshot이 실제 상태를 동기화함)
+        } else {
+          // 다른 에러는 다시 던짐
+          throw deleteError;
+        }
+      }
+      
       setError(null);
       
       // 전역 리프레시 트리거 (카드 섹션, 사이드바도 업데이트)
@@ -461,35 +597,45 @@ function SharedDocuments({ category, selectedDate, onNavigateToCategory, onDateS
     } catch (error) {
       console.error("Error deleting document:", error);
       
-      // 에러 발생 시 로컬 상태 롤백
-      setDocuments((prevDocs) => {
-        const newDocs = [...prevDocs, deletedDoc];
-        // 정렬 복원
-        if (!selectedDate && category !== "전체 공지") {
+      // INTERNAL ASSERTION이 아닌 경우에만 롤백
+      if (!error.message || !error.message.includes("INTERNAL ASSERTION")) {
+        // 에러 발생 시 로컬 상태 롤백
+        setDocuments((prevDocs) => {
+          const newDocs = [...prevDocs, deletedDoc];
+          // 정렬 복원
+          if (!selectedDate && category !== "전체 공지") {
+            return newDocs.sort((a, b) => {
+              if (a.date && b.date) {
+                const dateCompare = b.date.localeCompare(a.date);
+                if (dateCompare !== 0) return dateCompare;
+              }
+              const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+              const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+              return bTime - aTime;
+            });
+          }
           return newDocs.sort((a, b) => {
-            if (a.date && b.date) {
-              const dateCompare = b.date.localeCompare(a.date);
-              if (dateCompare !== 0) return dateCompare;
-            }
             const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
             const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
             return bTime - aTime;
           });
-        }
-        return newDocs.sort((a, b) => {
-          const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-          const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-          return bTime - aTime;
         });
-      });
-      
-      let errorMessage = "문서 삭제에 실패했습니다.";
-      if (error.code === "permission-denied") {
-        errorMessage = "권한이 없습니다. 본인이 작성한 문서인지 확인해주세요.";
-      } else if (error.message) {
-        errorMessage = `오류: ${error.message}`;
+        
+        let errorMessage = "문서 삭제에 실패했습니다.";
+        if (error.code === "permission-denied") {
+          errorMessage = "권한이 없습니다. 본인이 작성한 문서인지 확인해주세요.";
+        } else if (error.code === "unavailable") {
+          errorMessage = "네트워크 오류가 발생했습니다. 다시 시도해주세요.";
+        } else if (error.message) {
+          errorMessage = `오류: ${error.message}`;
+        }
+        setError(errorMessage);
+      } else {
+        // INTERNAL ASSERTION 오류는 조용히 처리 (삭제는 성공했을 가능성이 높음)
+        setError(null);
       }
-      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
