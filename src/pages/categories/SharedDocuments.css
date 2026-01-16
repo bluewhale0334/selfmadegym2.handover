@@ -608,6 +608,7 @@
 
 .comment-content {
   color: var(--muted);
+  white-space: pre-wrap;
 }
 
 .comment-content-wrapper {
