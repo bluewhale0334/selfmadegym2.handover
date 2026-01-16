@@ -17,12 +17,18 @@ function DashboardPage({ user, onShowAuthPage }) {
   const [profile, setProfile] = useState(null);
   const [activeCategory, setActiveCategory] = useState("대쉬보드");
   const [activeDate, setActiveDate] = useState(null);
+  const [activeSubCategory, setActiveSubCategory] = useState(null); // 전체 공지 하위 카테고리
   const [expandedCategories, setExpandedCategories] = useState({});
   const [expandedYears, setExpandedYears] = useState({}); // 각 카테고리의 연도별 펼침 상태 { "업무 지시": { "2024": true, "2025": false } }
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerCategory, setDatePickerCategory] = useState(null);
   const [visibleDateCounts, setVisibleDateCounts] = useState({}); // 각 카테고리-연도별 표시할 날짜 개수 { "업무 지시-2024": 5 }
   const [globalRefreshKey, setGlobalRefreshKey] = useState(0); // 전역 리프레시 키
+
+  const NOTICE_SUB_CATEGORIES = [
+    "현재 공지",
+    "docs~노션 공지",
+  ];
   const [showProfileMenu, setShowProfileMenu] = useState(false); // 프로필 메뉴 표시 여부
   const profileMenuRef = useRef(null); // 프로필 메뉴 참조
   const [showHandoverModal, setShowHandoverModal] = useState(false); // 인수인계 모달 표시 여부
@@ -196,6 +202,27 @@ function DashboardPage({ user, onShowAuthPage }) {
     // 전체보기만 수행 (토글은 하지 않음)
     setActiveCategory(categoryLabel);
     setActiveDate(null);
+    // 전체 공지가 아닌 경우 하위 카테고리 초기화
+    if (categoryLabel !== "전체 공지") {
+      setActiveSubCategory(null);
+    } else {
+      // 전체 공지인 경우 기본값 "현재 공지"로 설정 및 하위 카테고리 펼치기
+      setActiveSubCategory("현재 공지");
+      setExpandedCategories((prev) => ({
+        ...prev,
+        [categoryLabel]: true,
+      }));
+    }
+  };
+
+  const handleSubCategoryClick = (subCategory) => {
+    setActiveCategory("전체 공지");
+    setActiveSubCategory(subCategory);
+    setActiveDate(null);
+    setExpandedCategories((prev) => ({
+      ...prev,
+      "전체 공지": true,
+    }));
   };
 
   const handleToggleCategory = (categoryLabel, event) => {
@@ -305,6 +332,7 @@ function DashboardPage({ user, onShowAuthPage }) {
       
       setActiveCategory(datePickerCategory);
       setActiveDate(date);
+      setActiveSubCategory(null); // 날짜 선택 시 하위 카테고리 초기화
       setExpandedCategories((prev) => ({
         ...prev,
         [datePickerCategory]: true,
@@ -319,7 +347,15 @@ function DashboardPage({ user, onShowAuthPage }) {
   };
 
   const isCategoryActive = (categoryLabel) => {
+    if (categoryLabel === "전체 공지") {
+      // 전체 공지가 활성화되고, 하위 카테고리가 "현재 공지"이고, 날짜가 선택되지 않은 경우
+      return activeCategory === categoryLabel && activeDate === null && activeSubCategory === "현재 공지";
+    }
     return activeCategory === categoryLabel && activeDate === null;
+  };
+
+  const isSubCategoryActive = (subCategory) => {
+    return activeCategory === "전체 공지" && activeSubCategory === subCategory;
   };
 
   const renderContent = () => {
@@ -329,6 +365,17 @@ function DashboardPage({ user, onShowAuthPage }) {
     const handleNavigateToCategory = (categoryLabel) => {
       setActiveCategory(categoryLabel);
       setActiveDate(null);
+      // 전체 공지가 아닌 경우 하위 카테고리 초기화
+      if (categoryLabel !== "전체 공지") {
+        setActiveSubCategory(null);
+      } else {
+        // 전체 공지인 경우 기본값 "현재 공지"로 설정 및 하위 카테고리 펼치기
+        setActiveSubCategory("현재 공지");
+        setExpandedCategories((prev) => ({
+          ...prev,
+          [categoryLabel]: true,
+        }));
+      }
       if (categories.find((c) => c.label === categoryLabel)?.hasDates) {
         setExpandedCategories((prev) => ({
           ...prev,
@@ -340,19 +387,28 @@ function DashboardPage({ user, onShowAuthPage }) {
     const handleDateSelect = (categoryLabel, date) => {
       setActiveCategory(categoryLabel);
       setActiveDate(date);
+      setActiveSubCategory(null);
       setExpandedCategories((prev) => ({
         ...prev,
         [categoryLabel]: true,
       }));
     };
 
+    const handleSubCategorySelect = (subCategory) => {
+      setActiveCategory("전체 공지");
+      setActiveSubCategory(subCategory);
+      setActiveDate(null);
+    };
+
     const props = {
       category: activeCategory,
       selectedDate: activeDate,
+      selectedSubCategory: activeSubCategory,
       user: user,
       profile: profile,
       onNavigateToCategory: handleNavigateToCategory,
       onDateSelect: handleDateSelect,
+      onSubCategorySelect: handleSubCategorySelect,
       globalRefreshKey: globalRefreshKey,
       onRefresh: () => setGlobalRefreshKey((prev) => prev + 1),
     };
@@ -514,6 +570,8 @@ function DashboardPage({ user, onShowAuthPage }) {
         <div className="dashboard-category">
           {activeDate
             ? `${activeCategory} > ${getYearFromDate(activeDate)} > ${formatDate(activeDate)}`
+            : activeSubCategory
+            ? `${activeCategory} > ${activeSubCategory}`
             : activeCategory}
         </div>
         <div className="dashboard-actions">
@@ -618,6 +676,7 @@ function DashboardPage({ user, onShowAuthPage }) {
               const isExpanded = expandedCategories[category.label];
               const dates = dateLists[category.label] || [];
               const hasDates = category.hasDates && dates.length > 0;
+              const isNotice = category.label === "전체 공지";
 
               return (
                 <div key={category.label} className="nav-category-group">
@@ -637,7 +696,7 @@ function DashboardPage({ user, onShowAuthPage }) {
                       <span>{category.label}</span>
                     </button>
                     <div className="nav-item-right">
-                      {hasDates && (
+                      {(hasDates || isNotice) && (
                         <button
                           type="button"
                           className="nav-toggle-button"
@@ -651,6 +710,25 @@ function DashboardPage({ user, onShowAuthPage }) {
                       )}
                     </div>
                   </div>
+                  {isNotice && isExpanded && (
+                    <div className="nav-sub-items">
+                      {NOTICE_SUB_CATEGORIES.map((subCat) => (
+                        <button
+                          key={subCat}
+                          className={[
+                            "nav-sub-item",
+                            isSubCategoryActive(subCat) ? "active" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          type="button"
+                          onClick={() => handleSubCategoryClick(subCat)}
+                        >
+                          {subCat}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {hasDates && isExpanded && (() => {
                     const datesByYear = groupDatesByYear(dates);
                     const years = Object.keys(datesByYear);
