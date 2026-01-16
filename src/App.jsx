@@ -3,8 +3,10 @@ import {
   browserLocalPersistence,
   onAuthStateChanged,
   setPersistence,
+  signOut,
 } from "firebase/auth";
-import { auth } from "./firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "./firebase";
 import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
 import "./App.css";
@@ -20,13 +22,45 @@ function App() {
       console.error(error);
     });
 
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setIsLoading(false);
-      // 로그인 성공 시 AuthPage 닫기
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
+        // Firestore에서 사용자 정보 확인 (disabled 체크)
+        try {
+          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            // disabled 플래그가 true이거나 email이 빈 문자열이면 자동 로그아웃
+            if (userData.disabled === true || !userData.email || userData.email === "") {
+              console.log("User is disabled or email is empty, signing out...");
+              await signOut(auth);
+              setUser(null);
+              setIsLoading(false);
+              return;
+            }
+          } else {
+            // Firestore에 사용자 문서가 없으면 로그아웃
+            console.log("User document not found in Firestore, signing out...");
+            await signOut(auth);
+            setUser(null);
+            setIsLoading(false);
+            return;
+          }
+        } catch (error) {
+          console.error("Error checking user status:", error);
+          // 에러 발생 시에도 안전을 위해 로그아웃
+          try {
+            await signOut(auth);
+          } catch (signOutError) {
+            console.error("Error signing out:", signOutError);
+          }
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
         setShowAuthPage(false);
       }
+      setUser(currentUser);
+      setIsLoading(false);
     });
 
     return () => unsubscribe();

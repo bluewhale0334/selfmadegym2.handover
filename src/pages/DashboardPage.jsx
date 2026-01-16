@@ -10,6 +10,8 @@ import InstructionContent from "./categories/InstructionContent";
 import HandoverContent from "./categories/HandoverContent";
 import ProgressContent from "./categories/ProgressContent";
 import ChecklistContent from "./categories/ChecklistContent";
+import ProfilePage from "./ProfilePage";
+import SettingsPage from "./SettingsPage";
 
 function DashboardPage({ user, onShowAuthPage }) {
   const [profile, setProfile] = useState(null);
@@ -27,6 +29,8 @@ function DashboardPage({ user, onShowAuthPage }) {
   const [selectedUser, setSelectedUser] = useState(null); // 선택된 사용자
   const [passwordInput, setPasswordInput] = useState(""); // 비밀번호 입력
   const [handoverError, setHandoverError] = useState(""); // 인수인계 에러 메시지
+  const [showProfilePage, setShowProfilePage] = useState(false); // 프로필 페이지 표시 여부
+  const [showSettingsPage, setShowSettingsPage] = useState(false); // 환경설정 페이지 표시 여부
 
   const tagColors = useMemo(
     () => ({
@@ -484,8 +488,8 @@ function DashboardPage({ user, onShowAuthPage }) {
                       type="button"
                       className="profile-menu-item"
                       onClick={() => {
-                        alert("개발중입니다");
                         setShowProfileMenu(false);
+                        setShowProfilePage(true);
                       }}
                     >
                       프로필
@@ -503,6 +507,18 @@ function DashboardPage({ user, onShowAuthPage }) {
                     >
                       인수인계
                     </button>
+                    {profile?.user_type === "admin" && (
+                      <button
+                        type="button"
+                        className="profile-menu-item"
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          setShowSettingsPage(true);
+                        }}
+                      >
+                        환경설정
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -643,7 +659,21 @@ function DashboardPage({ user, onShowAuthPage }) {
         )}
         <main className="dashboard-main">
           <section className="dashboard-content">
-            {renderContent()}
+            {showProfilePage ? (
+              <ProfilePage
+                user={user}
+                profile={profile}
+                onClose={() => setShowProfilePage(false)}
+              />
+            ) : showSettingsPage ? (
+              <SettingsPage
+                user={user}
+                profile={profile}
+                onClose={() => setShowSettingsPage(false)}
+              />
+            ) : (
+              renderContent()
+            )}
           </section>
         </main>
       </div>

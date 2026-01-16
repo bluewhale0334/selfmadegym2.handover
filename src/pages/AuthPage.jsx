@@ -9,6 +9,7 @@ import {
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   serverTimestamp,
   setDoc,
@@ -142,6 +143,26 @@ function AuthPage({ user, onClose, initialMode = "login" }) {
                   loginForm.email,
                   loginForm.password
                 );
+                
+                // Firestore에서 사용자 정보 확인
+                const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
+                if (userDoc.exists()) {
+                  const userData = userDoc.data();
+                  // disabled 플래그가 true이거나 email이 빈 문자열이면 로그인 차단
+                  if (userData.disabled === true || !userData.email || userData.email === "") {
+                    await signOut(auth);
+                    setStatus("접속이 차단된 계정입니다. 관리자에게 문의하세요.");
+                    setIsLoading(false);
+                    return;
+                  }
+                } else {
+                  // Firestore에 사용자 문서가 없으면 로그인 차단
+                  await signOut(auth);
+                  setStatus("접속이 차단된 계정입니다. 관리자에게 문의하세요.");
+                  setIsLoading(false);
+                  return;
+                }
+                
                 await setDoc(
                   doc(db, "users", userCredential.user.uid),
                   {
