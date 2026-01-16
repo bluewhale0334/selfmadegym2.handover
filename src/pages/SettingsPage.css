@@ -221,6 +221,211 @@
   background-color: #c82333;
 }
 
+.restore-button {
+  background-color: #28a745;
+  color: white;
+}
+
+.restore-button:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+/* 복귀 모달 스타일 */
+.settings-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.settings-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.settings-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e8e8e3;
+}
+
+.settings-modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #2b2b2b;
+}
+
+.settings-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #666;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.settings-modal-close:hover {
+  background-color: #f0f0f0;
+}
+
+.settings-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.settings-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings-modal-field label {
+  font-weight: 600;
+  color: #2b2b2b;
+  font-size: 0.9rem;
+}
+
+.settings-modal-field input {
+  padding: 0.75rem;
+  border: 1px solid #d9c5a5;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.settings-modal-field input:focus {
+  outline: none;
+  border-color: #b8a082;
+}
+
+.settings-modal-field .tag-color-options {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.settings-modal-field .tag-color-options button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 2px solid #d9c5a5;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  font-size: 0.85rem;
+}
+
+.settings-modal-field .tag-color-options button:hover:not(:disabled) {
+  border-color: #b8a082;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.settings-modal-field .tag-color-options button.active {
+  border-color: #2b2b2b;
+  background-color: #f9f9f4;
+  font-weight: 600;
+}
+
+.settings-modal-field .tag-color-options button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-modal-field .tag-color-options button.reserved {
+  position: relative;
+  opacity: 0.6;
+}
+
+.settings-modal-field .color-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+.settings-modal-field .tag-overlay {
+  position: absolute;
+  bottom: 0.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: #666;
+  background: white;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.settings-modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e8e8e3;
+}
+
+.settings-modal-cancel,
+.settings-modal-confirm {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.settings-modal-cancel {
+  background-color: #f5f5f0;
+  color: #2b2b2b;
+  border: 1px solid #d9c5a5;
+}
+
+.settings-modal-cancel:hover:not(:disabled) {
+  background-color: #e8e8e3;
+}
+
+.settings-modal-confirm {
+  background-color: #28a745;
+  color: white;
+}
+
+.settings-modal-confirm:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.settings-modal-cancel:disabled,
+.settings-modal-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 @media (max-width: 768px) {
   .settings-page {
     padding: 1rem;

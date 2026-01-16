@@ -373,7 +373,7 @@ function SharedDocuments({ category, selectedDate, onNavigateToCategory, onDateS
       return;
     }
 
-    if (!isOwner(originalDoc)) {
+    if (!isOwner(originalDoc) && !isAdmin()) {
       setError("본인이 작성한 문서만 수정할 수 있습니다.");
       return;
     }
@@ -440,7 +440,7 @@ function SharedDocuments({ category, selectedDate, onNavigateToCategory, onDateS
       return;
     }
 
-    if (!isOwner(deletedDoc)) {
+    if (!isOwner(deletedDoc) && !isAdmin()) {
       setError("본인이 작성한 문서만 삭제할 수 있습니다.");
       return;
     }
@@ -495,6 +495,10 @@ function SharedDocuments({ category, selectedDate, onNavigateToCategory, onDateS
 
   const isOwner = (document) => {
     return user && document.authorId === user.uid;
+  };
+
+  const isAdmin = () => {
+    return profile?.user_type === "admin";
   };
 
   const hasRead = (document) => {
@@ -1067,7 +1071,7 @@ function SharedDocuments({ category, selectedDate, onNavigateToCategory, onDateS
                       {hasRead(document) ? "확인됨" : "내용 확인"}
                     </button>
                   )}
-                  {isOwner(document) && editingId !== document.id && (
+                  {(isOwner(document) || isAdmin()) && editingId !== document.id && (
                     <div className="document-actions">
                       <button
                         type="button"
