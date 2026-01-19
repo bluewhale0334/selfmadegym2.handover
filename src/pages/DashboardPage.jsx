@@ -228,11 +228,13 @@ function DashboardPage({ user, onShowAuthPage }) {
   const handleToggleCategory = (categoryLabel, event) => {
     // 토글만 수행 (전체보기는 하지 않음)
     event.stopPropagation();
-    if (categories.find((c) => c.label === categoryLabel)?.hasDates) {
+    const hasDates = categories.find((c) => c.label === categoryLabel)?.hasDates;
+    const isNotice = categoryLabel === "전체 공지";
+    if (hasDates || isNotice) {
       setExpandedCategories((prev) => {
         const isExpanding = !prev[categoryLabel];
         // 카테고리를 펼칠 때 초기 표시 개수 설정 (5개)
-        if (isExpanding) {
+        if (isExpanding && hasDates) {
           setVisibleDateCounts((prevCounts) => ({
             ...prevCounts,
             [categoryLabel]: 5,

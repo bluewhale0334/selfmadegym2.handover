@@ -1,5 +1,7 @@
+import DashboardInContent from "./DashboardInContent";
+
 function DashboardContent() {
-  return <div />;
+  return <DashboardInContent />;
 }
 
 export default DashboardContent;

@@ -319,7 +319,7 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* 인수인계 모달 */
+/* ?�수?�계 모달 */
 .handover-modal-overlay {
   position: fixed;
   top: 0;
@@ -621,4 +621,6 @@
   overflow: hidden;
   min-width: 0;
 }
+
+
 
