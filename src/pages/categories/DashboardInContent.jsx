@@ -8,7 +8,7 @@ function DashboardInContent() {
           <div className="dashboard-left-box">
             <h3 className="dashboard-box-title">왼쪽 박스</h3>
             <p className="dashboard-box-body">내용을 추가할 예정</p>
-            <p className="dashboard-box-body">Notice : 대쉬보드 개발중...
+            <p className="dashboard-box-body">Notice : 대시보드 개발중...
 <br></br>현재 사용가능한 기능<br></br>
 1. 전체 공지<br></br>
 2. 업무 지시<br></br>

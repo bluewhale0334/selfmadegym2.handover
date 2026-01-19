@@ -15,7 +15,7 @@ import SettingsPage from "./SettingsPage";
 
 function DashboardPage({ user, onShowAuthPage }) {
   const [profile, setProfile] = useState(null);
-  const [activeCategory, setActiveCategory] = useState("대쉬보드");
+  const [activeCategory, setActiveCategory] = useState("대시보드");
   const [activeDate, setActiveDate] = useState(null);
   const [activeSubCategory, setActiveSubCategory] = useState(null); // 전체 공지 하위 카테고리
   const [expandedCategories, setExpandedCategories] = useState({});
@@ -57,7 +57,7 @@ function DashboardPage({ user, onShowAuthPage }) {
 
   const categories = useMemo(
     () => [
-      { label: "대쉬보드", type: "dashboard", hasDates: false },
+      { label: "대시보드", type: "dashboard", hasDates: false },
       { label: "전체 공지", type: "notice", hasDates: false },
       { label: "업무 지시", type: "instruction", hasDates: true },
       { label: "일일 인수인계", type: "handover", hasDates: true },
@@ -416,7 +416,7 @@ function DashboardPage({ user, onShowAuthPage }) {
     };
 
     switch (activeCategory) {
-      case "대쉬보드":
+      case "대시보드":
         return <DashboardContent />;
       case "전체 공지":
         return <NoticeContent {...props} />;
