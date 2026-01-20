@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where, Timestamp } from "firebase/firestore";
 import { db } from "../../firebase";
+import DatePicker from "./DatePicker";
 import "./ChecklistInContent.css";
 
 const formatToday = () => {
@@ -34,6 +35,7 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
   const [activeDate, setActiveDate] = useState(formatToday);
   const [recentDates, setRecentDates] = useState([]);
   const [recentSnapshots, setRecentSnapshots] = useState({});
+  const [availableDates, setAvailableDates] = useState([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showDateAdder, setShowDateAdder] = useState(false);
   const [pendingSelectDate, setPendingSelectDate] = useState(formatToday);
@@ -83,6 +85,34 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
     };
     fetchSnapshots();
   }, [targetUserId, recentDates]);
+
+  useEffect(() => {
+    if (!targetUserId) return;
+    const fetchAvailableDates = async () => {
+      try {
+        const snapshots = await getDocs(
+          query(collection(db, "dailyChecklistSnapshots"), where("userId", "==", targetUserId))
+        );
+        const next = [];
+        snapshots.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (data?.date) {
+            next.push(data.date);
+          }
+        });
+        setAvailableDates(next);
+      } catch (error) {
+        console.error("Error fetching checklist dates:", error);
+      }
+    };
+    fetchAvailableDates();
+  }, [targetUserId]);
+
+  const displayDateLabel = useMemo(() => {
+    if (!activeDateValue) return "";
+    const [year, month, day] = activeDateValue.split("-");
+    return `${year}.${month}.${day}`;
+  }, [activeDateValue]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -403,25 +433,19 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
             setShowDateAdder(false);
           }}
         >
-          날짜 선택
+          {activeDateValue === today ? "날짜 선택" : displayDateLabel}
         </button>
         {showDatePicker && (
-          <div className="checklist-date-popover">
-            <input
-              type="date"
-              value={pendingSelectDate}
-              onChange={(event) => setPendingSelectDate(event.target.value)}
-            />
-            <button
-              type="button"
-              onClick={() => {
-                setActiveDate(pendingSelectDate);
-                setShowDatePicker(false);
-              }}
-            >
-              이동
-            </button>
-          </div>
+          <DatePicker
+            selectedDate={pendingSelectDate}
+            highlightedDates={availableDates}
+            onSelect={(date) => {
+              setActiveDate(date);
+              setPendingSelectDate(date);
+              setShowDatePicker(false);
+            }}
+            onClose={() => setShowDatePicker(false)}
+          />
         )}
         <button
           type="button"
@@ -459,6 +483,7 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
         <div className="checklist-recent-dates">
           {recentDates.map((date) => {
             const hasSnapshot = recentSnapshots[date];
+            if (!hasSnapshot) return null;
             return (
               <button
                 key={date}
@@ -466,10 +491,9 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
                 className={`checklist-date-button checklist-recent-button${
                   date === activeDateValue ? " active" : ""
                 }`}
-                disabled={!hasSnapshot}
-                onClick={() => hasSnapshot && setActiveDate(date)}
+                onClick={() => setActiveDate(date)}
               >
-                {hasSnapshot ? formatShortDate(date) : "없음"}
+                {formatShortDate(date)}
               </button>
             );
           })}

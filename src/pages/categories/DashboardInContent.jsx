@@ -466,7 +466,6 @@ function DashboardInContent({
           <div className="dashboard-right-bottom">
             <div className="dashboard-right-bottom-inner">
               <div className="dashboard-right-bottom-header">
-                <h3 className="dashboard-box-title">업무 리스트</h3>
                 <button
                   type="button"
                   className="dashboard-checklist-link"

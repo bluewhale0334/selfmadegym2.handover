@@ -81,6 +81,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .date-picker-day:hover:not(.empty) {
@@ -97,6 +98,16 @@
   background: var(--accent-strong);
   color: #3f2f1b;
   font-weight: 700;
+}
+
+.date-picker-day.has-data::after {
+  content: "";
+  position: absolute;
+  bottom: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c08a3e;
 }
 
 .date-picker-day.empty {

@@ -13,6 +13,7 @@ import ChecklistContent from "./categories/ChecklistContent";
 import ProfilePage from "./ProfilePage";
 import SettingsPage from "./SettingsPage";
 import ChecklistSettingsPage from "./ChecklistSettingsPage";
+import EmployeeStatsPage from "./EmployeeStatsPage";
 
 function DashboardPage({ user, onShowAuthPage }) {
   const [profile, setProfile] = useState(null);
@@ -48,6 +49,7 @@ function DashboardPage({ user, onShowAuthPage }) {
   const [showProfilePage, setShowProfilePage] = useState(false); // 프로필 페이지 표시 여부
   const [showSettingsPage, setShowSettingsPage] = useState(false); // 환경설정 페이지 표시 여부
   const [showChecklistSettingsPage, setShowChecklistSettingsPage] = useState(false);
+  const [showEmployeeStatsPage, setShowEmployeeStatsPage] = useState(false);
 
   const tagColors = useMemo(
     () => ({
@@ -67,6 +69,24 @@ function DashboardPage({ user, onShowAuthPage }) {
 
   const updateNotes = useMemo(
     () => [
+      {
+        version: "1.3.1",
+        content: `# handoverSM 1.3.1 - 변경사항
+
+## 주요 변경사항
+
+### 1. 업무 리스트 날짜 선택 UX 개선
+- 날짜 선택 클릭 시 달력이 즉시 열리고 날짜 클릭 즉시 이동
+- 생성된 날짜는 달력에 표시
+- 오늘은 "날짜 선택" 텍스트, 다른 날짜는 날짜 표기
+- 최근 5일 버튼은 스냅샷 없는 날짜 숨김
+
+### 2. 대시보드 업무 리스트 카드 개선
+- 카드 헤더의 텍스트 제거 및 바로가기 버튼 단독 배치
+
+## 기술적 변경사항
+- DatePicker에 생성 날짜 표시용 하이라이트 지원 추가`,
+      },
       {
         version: "1.3.0",
         content: `# handoverSM 1.3.0 - 변경사항
@@ -604,10 +624,10 @@ App.jsx
     ],
     []
   );
-  const [expandedUpdateVersions, setExpandedUpdateVersions] = useState(() => new Set(["1.3.0"]));
+  const [expandedUpdateVersions, setExpandedUpdateVersions] = useState(() => new Set(["1.3.1"]));
   const currentVersionInfo = useMemo(
     () => `## 버전 정보
-- **버전**: 1.3.0
+- **버전**: 1.3.1
 - **프로젝트명**: handoverSM
 - **개발 환경**: React + Vite + Firebase`,
     []
@@ -823,6 +843,7 @@ App.jsx
     setShowChecklistSettingsPage(false);
     setShowProfilePage(false);
     setShowSettingsPage(false);
+    setShowEmployeeStatsPage(false);
   };
 
   const handleCategoryClick = (categoryLabel) => {
@@ -1311,7 +1332,23 @@ App.jsx
                         className="profile-menu-item"
                         onClick={() => {
                           setShowProfileMenu(false);
+                          setShowEmployeeStatsPage(true);
+                          setShowProfilePage(false);
+                          setShowSettingsPage(false);
+                          setShowChecklistSettingsPage(false);
+                        }}
+                      >
+                        직원 통계
+                      </button>
+                    )}
+                    {profile?.user_type === "admin" && (
+                      <button
+                        type="button"
+                        className="profile-menu-item"
+                        onClick={() => {
+                          setShowProfileMenu(false);
                           setShowSettingsPage(true);
+                          setShowEmployeeStatsPage(false);
                         }}
                       >
                         환경설정
@@ -1522,6 +1559,12 @@ App.jsx
                 user={user}
                 profile={profile}
                 onClose={() => setShowChecklistSettingsPage(false)}
+              />
+            ) : showEmployeeStatsPage ? (
+              <EmployeeStatsPage
+                user={user}
+                profile={profile}
+                onClose={() => setShowEmployeeStatsPage(false)}
               />
             ) : (
               renderContent()

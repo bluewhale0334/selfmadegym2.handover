@@ -147,6 +147,10 @@
   transition: all 0.2s;
 }
 
+.settings-worktime-item {
+  align-items: flex-start;
+}
+
 .settings-user-item:hover {
   border-color: #d9c5a5;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -165,6 +169,57 @@
   flex-direction: column;
   gap: 0.25rem;
   flex: 1;
+}
+
+.settings-worktime-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 260px;
+}
+
+.settings-worktime-weekdays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.settings-worktime-day {
+  border: 1px solid #e8e8e3;
+  background: #ffffff;
+  color: #2b2b2b;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.settings-worktime-day.active {
+  border-color: #2b2b2b;
+  background: #f5f5f0;
+  font-weight: 600;
+}
+
+.settings-worktime-times {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.settings-worktime-times label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-worktime-times select {
+  border: 1px solid #e8e8e3;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 0.85rem;
+  background: #ffffff;
 }
 
 .settings-user-name {

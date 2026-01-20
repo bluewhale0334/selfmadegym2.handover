@@ -9,12 +9,14 @@ function SettingsPage({ user, profile, onClose }) {
   const [disabledUsers, setDisabledUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState("");
-  const [selectedSection, setSelectedSection] = useState("admin"); // "admin", "revoke", "retire", or "disabled"
+  const [selectedSection, setSelectedSection] = useState("admin"); // "admin", "revoke", "retire", "disabled", or "worktime"
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [selectedUserForRestore, setSelectedUserForRestore] = useState(null);
   const [restoreEmail, setRestoreEmail] = useState("");
   const [restoreTagColor, setRestoreTagColor] = useState("red");
   const [reservedColors, setReservedColors] = useState({});
+  const [worktimeEdits, setWorktimeEdits] = useState({});
+  const [savingWorktimeUserId, setSavingWorktimeUserId] = useState(null);
 
   const tagColors = useMemo(
     () => ({
@@ -48,6 +50,20 @@ function SettingsPage({ user, profile, onClose }) {
     []
   );
 
+  const weekdayOptions = useMemo(
+    () => ["월", "화", "수", "목", "금", "토", "일"],
+    []
+  );
+  const hourOptions = useMemo(
+    () => Array.from({ length: 24 }).map((_, index) => String(index).padStart(2, "0")),
+    []
+  );
+
+  const normalizeHourValue = (value) => {
+    if (!value) return "";
+    return String(value).split(":")[0].padStart(2, "0");
+  };
+
   // customer 타입 사용자 목록 가져오기
   useEffect(() => {
     if (!user || profile?.user_type !== "admin") return;
@@ -71,6 +87,7 @@ function SettingsPage({ user, profile, onClose }) {
               role: data.role || "직책",
               tagColor: data.tagColor || "gray",
               user_type: data.user_type || "customer",
+              workTime: data.workTime || {},
             });
           }
         });
@@ -83,6 +100,66 @@ function SettingsPage({ user, profile, onClose }) {
 
     fetchCustomerUsers();
   }, [user, profile?.user_type]);
+
+  useEffect(() => {
+    if (allUsers.length === 0) return;
+    setWorktimeEdits((prev) => {
+      const next = { ...prev };
+      allUsers.forEach((userItem) => {
+        if (next[userItem.id]) return;
+        const workTime = userItem.workTime || {};
+        next[userItem.id] = {
+          weekdays: Array.isArray(workTime.weekdays) ? workTime.weekdays : [],
+            startTime: normalizeHourValue(workTime.startTime),
+            endTime: normalizeHourValue(workTime.endTime),
+        };
+      });
+      return next;
+    });
+  }, [allUsers]);
+
+  const handleToggleWorkday = (userId, dayLabel) => {
+    setWorktimeEdits((prev) => {
+      const current = prev[userId] || { weekdays: [], startTime: "", endTime: "" };
+      const exists = current.weekdays.includes(dayLabel);
+      const nextWeekdays = exists
+        ? current.weekdays.filter((day) => day !== dayLabel)
+        : [...current.weekdays, dayLabel];
+      return {
+        ...prev,
+        [userId]: { ...current, weekdays: nextWeekdays },
+      };
+    });
+  };
+
+  const handleWorktimeChange = (userId, field, value) => {
+    setWorktimeEdits((prev) => {
+      const current = prev[userId] || { weekdays: [], startTime: "", endTime: "" };
+      return {
+        ...prev,
+        [userId]: { ...current, [field]: value },
+      };
+    });
+  };
+
+  const handleSaveWorktime = async (userItem) => {
+    const payload = worktimeEdits[userItem.id];
+    if (!payload) return;
+    setSavingWorktimeUserId(userItem.id);
+    setStatus("");
+    try {
+      const userRef = doc(db, "users", userItem.id);
+      await updateDoc(userRef, {
+        workTime: payload,
+      });
+      setStatus(`${userItem.name}님의 근무시간이 저장되었습니다.`);
+    } catch (error) {
+      console.error("Error saving work time:", error);
+      setStatus("근무시간 저장에 실패했습니다: " + error.message);
+    } finally {
+      setSavingWorktimeUserId(null);
+    }
+  };
 
   // admin 타입 사용자 목록 가져오기
   useEffect(() => {
@@ -428,6 +505,16 @@ function SettingsPage({ user, profile, onClose }) {
         <div className="settings-nav">
           <button
             type="button"
+            className={`settings-nav-item ${selectedSection === "worktime" ? "active" : ""}`}
+            onClick={() => {
+              setSelectedSection("worktime");
+              setStatus("");
+            }}
+          >
+            직원 근무시간 설정
+          </button>
+          <button
+            type="button"
             className={`settings-nav-item ${selectedSection === "admin" ? "active" : ""}`}
             onClick={() => {
               setSelectedSection("admin");
@@ -637,6 +724,100 @@ function SettingsPage({ user, profile, onClose }) {
                       </button>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          ) : selectedSection === "worktime" ? (
+            <div className="settings-section">
+              <h3>어드민 근무시간 설정</h3>
+              <p className="settings-description">
+                customer 타입 사용자별로 근무 요일과 시간을 설정합니다.
+              </p>
+              {allUsers.length === 0 ? (
+                <p className="settings-empty">등록된 customer 타입 사용자가 없습니다.</p>
+              ) : (
+                <div className="settings-user-list">
+                  {allUsers.map((userItem) => {
+                    const worktime = worktimeEdits[userItem.id] || {
+                      weekdays: [],
+                      startTime: "",
+                      endTime: "",
+                    };
+                    return (
+                      <div key={userItem.id} className="settings-user-item settings-worktime-item">
+                        <span
+                          className="settings-user-dot"
+                          style={{
+                            backgroundColor: tagColors[userItem.tagColor] ?? "#b0b3b8",
+                          }}
+                        />
+                        <div className="settings-user-info">
+                          <span className="settings-user-name">{userItem.name}</span>
+                          <span className="settings-user-role">{userItem.role}</span>
+                          <span className="settings-user-email">{userItem.email}</span>
+                        </div>
+                        <div className="settings-worktime-controls">
+                          <div className="settings-worktime-weekdays">
+                            {weekdayOptions.map((day) => (
+                              <button
+                                key={`${userItem.id}-${day}`}
+                                type="button"
+                                className={`settings-worktime-day${
+                                  worktime.weekdays.includes(day) ? " active" : ""
+                                }`}
+                                onClick={() => handleToggleWorkday(userItem.id, day)}
+                              >
+                                {day}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="settings-worktime-times">
+                            <label>
+                              시작
+                              <select
+                                value={worktime.startTime}
+                                onChange={(event) =>
+                                  handleWorktimeChange(userItem.id, "startTime", event.target.value)
+                                }
+                              >
+                                <option value="">선택</option>
+                                {hourOptions.map((hour) => (
+                                  <option key={`${userItem.id}-start-${hour}`} value={hour}>
+                                    {hour}시
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <span>~</span>
+                            <label>
+                              종료
+                              <select
+                                value={worktime.endTime}
+                                onChange={(event) =>
+                                  handleWorktimeChange(userItem.id, "endTime", event.target.value)
+                                }
+                              >
+                                <option value="">선택</option>
+                                {hourOptions.map((hour) => (
+                                  <option key={`${userItem.id}-end-${hour}`} value={hour}>
+                                    {hour}시
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="settings-action-button"
+                          onClick={() => handleSaveWorktime(userItem)}
+                          disabled={savingWorktimeUserId === userItem.id}
+                        >
+                          {savingWorktimeUserId === userItem.id ? "저장 중..." : "저장"}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

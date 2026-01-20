@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import "./DatePicker.css";
 
-function DatePicker({ selectedDate, onSelect, onClose }) {
+function DatePicker({ selectedDate, onSelect, onClose, highlightedDates = [] }) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(
     selectedDate ? new Date(selectedDate) : today
@@ -21,6 +21,11 @@ function DatePicker({ selectedDate, onSelect, onClose }) {
     const d = String(date.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
   };
+
+  const highlightedSet = useMemo(
+    () => new Set(highlightedDates),
+    [highlightedDates]
+  );
 
   const handleDateClick = (day) => {
     const date = new Date(year, month, day);
@@ -105,6 +110,8 @@ function DatePicker({ selectedDate, onSelect, onClose }) {
           ))}
           {Array.from({ length: daysInMonth }).map((_, index) => {
             const day = index + 1;
+            const dateString = formatDateString(new Date(year, month, day));
+            const isHighlighted = highlightedSet.has(dateString);
             return (
               <button
                 key={day}
@@ -113,6 +120,7 @@ function DatePicker({ selectedDate, onSelect, onClose }) {
                   "date-picker-day",
                   isSelected(day) ? "selected" : "",
                   isToday(day) ? "today" : "",
+                  isHighlighted ? "has-data" : "",
                 ]
                   .filter(Boolean)
                   .join(" ")}
