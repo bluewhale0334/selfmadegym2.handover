@@ -12,6 +12,7 @@ import ProgressContent from "./categories/ProgressContent";
 import ChecklistContent from "./categories/ChecklistContent";
 import ProfilePage from "./ProfilePage";
 import SettingsPage from "./SettingsPage";
+import ChecklistSettingsPage from "./ChecklistSettingsPage";
 
 function DashboardPage({ user, onShowAuthPage }) {
   const [profile, setProfile] = useState(null);
@@ -46,6 +47,7 @@ function DashboardPage({ user, onShowAuthPage }) {
   const [handoverError, setHandoverError] = useState(""); // 인수인계 에러 메시지
   const [showProfilePage, setShowProfilePage] = useState(false); // 프로필 페이지 표시 여부
   const [showSettingsPage, setShowSettingsPage] = useState(false); // 환경설정 페이지 표시 여부
+  const [showChecklistSettingsPage, setShowChecklistSettingsPage] = useState(false);
 
   const tagColors = useMemo(
     () => ({
@@ -65,6 +67,35 @@ function DashboardPage({ user, onShowAuthPage }) {
 
   const updateNotes = useMemo(
     () => [
+      {
+        version: "1.3.0",
+        content: `# handoverSM 1.3.0 - 변경사항
+
+## 주요 변경사항
+
+### 1. 업무 리스트 명칭 정리
+- **업무 리스트 명칭 통일**
+  - 사이드바/버튼/안내 문구 텍스트 통일
+
+### 2. 업무 리스트 화면 개선
+- 일일/추가 업무를 분리한 레이아웃
+- 완료 항목 분리 및 완료시간 표시
+- 날짜 선택/추가 및 최근 5일 빠른 이동 버튼
+
+### 3. 업무관리 설정 기능 확장
+- 일일/주간/월간 템플릿 관리
+- 주간 요일/월간 날짜 선택, 월간 다중 선택
+- 관리자용 사용자별 관리 및 내용 복사
+
+### 4. 대시보드 업무 리스트 위젯 추가
+- 오늘 업무 목록 표시 (미완료만)
+- 시간 경과 시 강조 표시, 시간 순 정렬
+- 업무 리스트 바로가기 버튼
+
+## 기술적 변경사항
+- \`dailyChecklistSnapshots\`/ \`checklistTasks\` 기반 일일 스냅샷 저장
+- Firestore 보안 규칙에 업무 리스트 컬렉션 권한 추가`,
+      },
       {
         version: "1.2.0",
         content: `# handoverSM 1.2.0 - 변경사항
@@ -394,7 +425,7 @@ function DashboardPage({ user, onShowAuthPage }) {
   - 업무 지시 (날짜 하위 카테고리 있음)
   - 일일 인수인계 (날짜 하위 카테고리 있음)
   - 업무 완료사항 (날짜 하위 카테고리 있음)
-  - 업무 체크리스트 (날짜 하위 카테고리 있음, 사용자별 데이터)
+  - 업무 리스트 (날짜 하위 카테고리 있음, 사용자별 데이터)
 
 - **날짜별 하위 카테고리**
   - 상위 카테고리 클릭: 해당 카테고리의 모든 문서 표시 (날짜별 정렬)
@@ -478,8 +509,8 @@ function DashboardPage({ user, onShowAuthPage }) {
   - \`notices\`: 전체 공지
   - \`instructions\`: 업무 지시
   - \`handovers\`: 일일 인수인계
-  - \`progresses\`: 업무 진행사항
-  - \`checklists\`: 업무 체크리스트 (사용자별)
+  - \`progresses\`: 업무 완료사항
+  - \`checklists\`: 업무 리스트 (사용자별)
 
 - **문서 구조**
   \`\`\`javascript
@@ -573,10 +604,10 @@ App.jsx
     ],
     []
   );
-  const [expandedUpdateVersions, setExpandedUpdateVersions] = useState(() => new Set(["1.2.0"]));
+  const [expandedUpdateVersions, setExpandedUpdateVersions] = useState(() => new Set(["1.3.0"]));
   const currentVersionInfo = useMemo(
     () => `## 버전 정보
-- **버전**: 1.2.0
+- **버전**: 1.3.0
 - **프로젝트명**: handoverSM
 - **개발 환경**: React + Vite + Firebase`,
     []
@@ -652,7 +683,7 @@ App.jsx
       { label: "업무 지시", type: "instruction", hasDates: true },
       { label: "일일 인수인계", type: "handover", hasDates: true },
       { label: "업무 완료사항", type: "progress", hasDates: true },
-      { label: "업무 체크리스트", type: "checklist", hasDates: true },
+      { label: "업무 리스트", type: "checklist", hasDates: true },
     ],
     []
   );
@@ -661,7 +692,7 @@ App.jsx
     "업무 지시": [],
     "일일 인수인계": [],
     "업무 완료사항": [],
-    "업무 체크리스트": [],
+    "업무 리스트": [],
   });
 
   // Firestore에서 날짜 목록 가져오기 (실시간 업데이트)
@@ -672,7 +703,7 @@ App.jsx
       "업무 지시": "instructions",
       "일일 인수인계": "handovers",
       "업무 완료사항": "progresses",
-      "업무 체크리스트": "checklists",
+      "업무 리스트": "checklists",
     };
 
     const unsubscribes = [];
@@ -681,8 +712,8 @@ App.jsx
       // globalRefreshKey가 변경되면 리스너 재구독
       try {
         let q;
-        if (category === "업무 체크리스트") {
-          // 체크리스트는 userId로만 필터링하고, 정렬은 클라이언트에서 처리 (인덱스 불필요)
+        if (category === "업무 리스트") {
+          // 업무 리스트는 userId로만 필터링하고, 정렬은 클라이언트에서 처리 (인덱스 불필요)
           q = query(
             collection(db, collectionName),
             where("userId", "==", user.uid)
@@ -872,7 +903,7 @@ App.jsx
         "업무 지시": "instructions",
         "일일 인수인계": "handovers",
         "업무 완료사항": "progresses",
-        "업무 체크리스트": "checklists",
+        "업무 리스트": "checklists",
       };
 
       const collectionName = categoryCollections[datePickerCategory];
@@ -881,7 +912,7 @@ App.jsx
         try {
           // 해당 날짜에 문서가 있는지 확인
           let checkQuery;
-          if (datePickerCategory === "업무 체크리스트") {
+          if (datePickerCategory === "업무 리스트") {
             checkQuery = query(
               collection(db, collectionName),
               where("userId", "==", user.uid),
@@ -906,7 +937,7 @@ App.jsx
               createdAt: serverTimestamp(),
             };
 
-            if (datePickerCategory === "업무 체크리스트") {
+            if (datePickerCategory === "업무 리스트") {
               flagDoc.userId = user.uid;
               flagDoc.authorId = user.uid;
             } else {
@@ -1044,8 +1075,13 @@ App.jsx
         return <HandoverContent {...props} />;
       case "업무 완료사항":
         return <ProgressContent {...props} />;
-      case "업무 체크리스트":
-        return <ChecklistContent {...props} />;
+      case "업무 리스트":
+        return (
+          <ChecklistContent
+            {...props}
+            onOpenChecklistSettings={() => setShowChecklistSettingsPage(true)}
+          />
+        );
       default:
         return (
           <DashboardContent
@@ -1467,6 +1503,12 @@ App.jsx
                 user={user}
                 profile={profile}
                 onClose={() => setShowSettingsPage(false)}
+              />
+            ) : showChecklistSettingsPage ? (
+              <ChecklistSettingsPage
+                user={user}
+                profile={profile}
+                onClose={() => setShowChecklistSettingsPage(false)}
               />
             ) : (
               renderContent()

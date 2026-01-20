@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { collection, doc, onSnapshot, query, updateDoc, where, Timestamp } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, query, updateDoc, where, Timestamp } from "firebase/firestore";
 import { db } from "../../firebase";
 import "./DashboardInContent.css";
 
@@ -46,7 +46,7 @@ const COMMENT_SOURCES = [
   { label: "업무 지시", collection: "instructions", hasDate: true },
   { label: "일일 인수인계", collection: "handovers", hasDate: true },
   { label: "업무 완료사항", collection: "progresses", hasDate: true },
-  { label: "업무 체크리스트", collection: "checklists", hasDate: true },
+  { label: "업무 리스트", collection: "checklists", hasDate: true },
 ];
 
 const getDocKey = (collectionName, documentId) => {
@@ -67,6 +67,9 @@ function DashboardInContent({
   const sourceItemsRef = useRef({});
   const sourceDocsRef = useRef({});
   const sourceInitRef = useRef({});
+  const [dailyListItems, setDailyListItems] = useState([]);
+  const [weeklyMonthlyItems, setWeeklyMonthlyItems] = useState([]);
+  const [checklistError, setChecklistError] = useState("");
 
   useEffect(() => {
     if (!user) {
@@ -77,6 +80,9 @@ function DashboardInContent({
       sourceItemsRef.current = {};
       sourceDocsRef.current = {};
       sourceInitRef.current = {};
+      setDailyListItems([]);
+      setWeeklyMonthlyItems([]);
+      setChecklistError("");
       return () => {};
     }
 
@@ -156,6 +162,67 @@ function DashboardInContent({
     return () => {
       unsubscribes.forEach((unsubscribe) => unsubscribe());
     };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const loadChecklistSnapshot = async () => {
+      try {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const day = String(today.getDate()).padStart(2, "0");
+        const dateKey = `${year}-${month}-${day}`;
+        const weekdayLabels = ["일", "월", "화", "수", "목", "금", "토"];
+        const todayWeekday = weekdayLabels[today.getDay()] ?? "월";
+        const todayMonthDay = today.getDate();
+        const snapshotRef = doc(db, "dailyChecklistSnapshots", `${user.uid}_${dateKey}`);
+        const snapshotDoc = await getDoc(snapshotRef);
+        if (!snapshotDoc.exists()) {
+          setDailyListItems([]);
+          setWeeklyMonthlyItems([]);
+          return;
+        }
+        const data = snapshotDoc.data();
+        const items = Array.isArray(data.items) ? data.items : [];
+        const extras = Array.isArray(data.extraItems) ? data.extraItems : [];
+        const pendingItems = items.filter((item) => !item.done);
+        const pendingExtras = extras.filter((item) => !item.done);
+
+        const sortByTime = (a, b) => {
+          const aHour = typeof a.hour === "number" ? a.hour : 99;
+          const bHour = typeof b.hour === "number" ? b.hour : 99;
+          if (aHour !== bHour) return aHour - bHour;
+          const aMin = typeof a.minute === "number" ? a.minute : 99;
+          const bMin = typeof b.minute === "number" ? b.minute : 99;
+          return aMin - bMin;
+        };
+
+        const daily = pendingItems
+          .filter((item) => (item.category || "일일 업무") === "일일 업무")
+          .sort(sortByTime);
+
+        const weeklyMonthly = [
+          ...pendingItems.filter((item) => {
+            if (item.category === "주간 업무") {
+              return item.weekday === todayWeekday;
+            }
+            if (item.category === "월간 업무") {
+              return Array.isArray(item.monthDays) && item.monthDays.includes(todayMonthDay);
+            }
+            return false;
+          }),
+          ...pendingExtras.map((item) => ({ ...item, category: "추가 업무" })),
+        ];
+
+        setDailyListItems(daily);
+        setWeeklyMonthlyItems(weeklyMonthly);
+      } catch (error) {
+        console.error("Error loading checklist snapshot:", error);
+        setChecklistError("업무 리스트를 불러오지 못했습니다.");
+      }
+    };
+    loadChecklistSnapshot();
   }, [user]);
 
   const unreadCount = commentItems.filter((item) => !item.isRead).length;
@@ -304,12 +371,29 @@ function DashboardInContent({
     }
   };
 
+  const isOverdue = (item) => {
+    if (typeof item.hour !== "number" || typeof item.minute !== "number") {
+      return false;
+    }
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const itemMinutes = item.hour * 60 + item.minute;
+    return nowMinutes > itemMinutes;
+  };
+
+  const formatItemTime = (item) => {
+    if (typeof item.hour !== "number" || typeof item.minute !== "number") {
+      return "--:--";
+    }
+    return `${String(item.hour).padStart(2, "0")}:${String(item.minute).padStart(2, "0")}`;
+  };
+
   return (
     <section className="dashboard-overview">
       <div className="dashboard-split">
         <div className="dashboard-left">
           <div className="dashboard-left-box">
-            <h3 className="dashboard-box-title">왼쪽 박스</h3>
+            <h3 className="dashboard-box-title">어드민 백과사전</h3>
             <p className="dashboard-box-body">내용을 추가할 예정</p>
             <p className="dashboard-box-body">Notice : 대시보드 개발중...
 <br></br>현재 사용가능한 기능<br></br>
@@ -379,13 +463,58 @@ function DashboardInContent({
             </div>
           </div>
           <div className="dashboard-right-bottom">
-            <div className="dashboard-right-bottom-box">
-              <h3 className="dashboard-box-title">하단 좌측</h3>
-              <p className="dashboard-box-body">내용을 추가할 예정</p>
+            <div className="dashboard-right-bottom-inner">
+              <div className="dashboard-right-bottom-header">
+                <h3 className="dashboard-box-title">업무 리스트</h3>
+                <button
+                  type="button"
+                  className="dashboard-checklist-link"
+                  onClick={() => onNavigateToCategory?.("업무 리스트")}
+                >
+                  업무 리스트 바로가기
+                </button>
+              </div>
+              <div className="dashboard-right-bottom-section">
+                <h3 className="dashboard-box-title">일일 업무 리스트</h3>
+                {checklistError ? (
+                  <p className="dashboard-box-body">{checklistError}</p>
+                ) : dailyListItems.length === 0 ? (
+                  <p className="dashboard-box-body">대기 중인 업무가 없습니다.</p>
+                ) : (
+                  <div className="dashboard-checklist-list">
+                    {dailyListItems.map((item, index) => (
+                      <div
+                        key={`daily-${item.title}-${index}`}
+                        className={`dashboard-checklist-item${
+                          isOverdue(item) ? " is-overdue" : ""
+                        }`}
+                      >
+                        <span className="dashboard-checklist-time">{formatItemTime(item)}</span>
+                        <span className="dashboard-checklist-title">{item.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="dashboard-right-bottom-divider" aria-hidden="true" />
+              <div className="dashboard-right-bottom-section">
+                <h3 className="dashboard-box-title">주간, 월간, 추가 업무 리스트</h3>
+                {checklistError ? (
+                  <p className="dashboard-box-body">{checklistError}</p>
+                ) : weeklyMonthlyItems.length === 0 ? (
+                  <p className="dashboard-box-body">대기 중인 업무가 없습니다.</p>
+                ) : (
+                  <div className="dashboard-checklist-list">
+                    {weeklyMonthlyItems.map((item, index) => (
+                      <div key={`weekly-${item.title}-${index}`} className="dashboard-checklist-item">
+                        <span className="dashboard-checklist-tag">{item.category || "업무"}</span>
+                        <span className="dashboard-checklist-time">{formatItemTime(item)}</span>
+                        <span className="dashboard-checklist-title">{item.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
             </div>
-            <div className="dashboard-right-bottom-box">
-              <h3 className="dashboard-box-title">하단 우측</h3>
-              <p className="dashboard-box-body">내용을 추가할 예정</p>
             </div>
           </div>
         </div>

@@ -171,24 +171,105 @@
 }
 
 .dashboard-right-bottom {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
   flex: 1;
   min-height: 0;
 }
 
-.dashboard-right-bottom-box {
+.dashboard-right-bottom-inner {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 20px;
   box-shadow: 0 6px 16px rgba(59, 45, 30, 0.08);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+}
+
+.dashboard-right-bottom-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dashboard-right-bottom-section {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: 0;
+  min-width: 0;
 }
+
+.dashboard-right-bottom-divider {
+  width: 1px;
+  background: var(--border);
+  border-radius: 999px;
+}
+
+.dashboard-checklist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.dashboard-checklist-item.is-overdue {
+  border-color: rgba(228, 87, 79, 0.6);
+  background: rgba(228, 87, 79, 0.12);
+}
+
+.dashboard-checklist-time {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  min-width: 48px;
+}
+
+.dashboard-checklist-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.dashboard-checklist-tag {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--muted);
+}
+
+.dashboard-checklist-link {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dashboard-checklist-link:hover {
+  border-color: rgba(90, 73, 52, 0.4);
+  background: rgba(255, 255, 255, 0.9);
+}
+
 
 .dashboard-box-title {
   margin: 0;

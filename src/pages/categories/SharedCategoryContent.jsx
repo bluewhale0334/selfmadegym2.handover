@@ -9,7 +9,7 @@ const CATEGORY_ORDER = [
   "업무 지시",
   "일일 인수인계",
   "업무 완료사항",
-  "업무 체크리스트",
+  "업무 리스트",
 ];
 
 // 카테고리 이름을 Firestore 컬렉션 이름으로 매핑
@@ -19,7 +19,7 @@ const getCollectionName = (category) => {
     "업무 지시": "instructions",
     "일일 인수인계": "handovers",
     "업무 완료사항": "progresses",
-    "업무 체크리스트": "checklists",
+    "업무 리스트": "checklists",
   };
   return mapping[category] || null;
 };

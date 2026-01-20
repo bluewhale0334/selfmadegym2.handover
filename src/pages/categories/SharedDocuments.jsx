@@ -11,7 +11,7 @@ const getCollectionName = (category) => {
     "업무 지시": "instructions",
     "일일 인수인계": "handovers",
     "업무 완료사항": "progresses",
-    "업무 체크리스트": "checklists",
+    "업무 리스트": "checklists",
   };
   return mapping[category] || null;
 };
@@ -138,8 +138,8 @@ function SharedDocuments({
       console.log("Fetching documents:", { category, selectedDate, collectionName });
 
       try {
-        if (category === "업무 체크리스트") {
-          // 체크리스트는 사용자별 필터링
+        if (category === "업무 리스트") {
+        // 업무 리스트는 사용자별 필터링
           if (selectedDate) {
             q = query(
               collection(db, collectionName),
@@ -394,8 +394,8 @@ function SharedDocuments({
         docData.date = documentDate;
       }
 
-      // 체크리스트는 userId 추가
-      if (category === "업무 체크리스트") {
+      // 업무 리스트는 userId 추가
+      if (category === "업무 리스트") {
         docData.userId = user.uid;
       }
 
@@ -413,7 +413,7 @@ function SharedDocuments({
         createdAt: Timestamp.now(), // 임시로 현재 시간 사용
         readBy: [],
         ...(documentDate && { date: documentDate }),
-        ...(category === "업무 체크리스트" && { userId: user.uid }),
+        ...(category === "업무 리스트" && { userId: user.uid }),
       };
       
       setDocuments((prevDocs) => {

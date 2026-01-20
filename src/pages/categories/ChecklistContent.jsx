@@ -1,17 +1,12 @@
-import SharedCategoryContent from "./SharedCategoryContent";
+import ChecklistInContent from "./ChecklistInContent";
 
-function ChecklistContent({ category, selectedDate, onNavigateToCategory, onDateSelect, user, profile, globalRefreshKey, onRefresh }) {
+function ChecklistContent({ selectedDate, onOpenChecklistSettings, user, profile }) {
   return (
-    <SharedCategoryContent
-      showDocuments={false}
-      category={category}
+    <ChecklistInContent
       selectedDate={selectedDate}
-      onNavigateToCategory={onNavigateToCategory}
-      onDateSelect={onDateSelect}
+      onOpenChecklistSettings={onOpenChecklistSettings}
       user={user}
       profile={profile}
-      globalRefreshKey={globalRefreshKey}
-      onRefresh={onRefresh}
     />
   );
 }
