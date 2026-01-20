@@ -157,6 +157,7 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
       date: dateValue,
       createdAt: Timestamp.now(),
       items,
+      extraItems: [],
     });
     return true;
   };
@@ -235,9 +236,9 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
     loadDailyChecklist();
   }, [targetUserId, activeDateValue, today, user?.uid]);
 
-  const persistSnapshot = async (nextItems, nextExtraItems) => {
+  const persistSnapshot = async (dateValue, nextItems, nextExtraItems) => {
     if (!targetUserId) return;
-    const snapshotId = getSnapshotDocId(targetUserId, today);
+    const snapshotId = getSnapshotDocId(targetUserId, dateValue);
     const snapshotRef = doc(db, "dailyChecklistSnapshots", snapshotId);
     await updateDoc(snapshotRef, {
       items: nextItems,
@@ -276,7 +277,7 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
       setExtraItems(nextExtraItems);
     }
     try {
-      await persistSnapshot(nextItems, nextExtraItems);
+      await persistSnapshot(activeDateValue, nextItems, nextExtraItems);
     } catch (error) {
       console.error("Error updating daily checklist:", error);
       setStatus("업무 리스트 저장에 실패했습니다.");
@@ -299,7 +300,7 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
     setExtraItems(nextExtraItems);
     setNewExtraTitle("");
     try {
-      await persistSnapshot(dailyItems, nextExtraItems);
+      await persistSnapshot(activeDateValue, dailyItems, nextExtraItems);
     } catch (error) {
       console.error("Error adding extra checklist:", error);
       setStatus("추가 업무 리스트 저장에 실패했습니다.");
@@ -310,7 +311,7 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
     const nextExtraItems = extraItems.filter((_, itemIndex) => itemIndex !== index);
     setExtraItems(nextExtraItems);
     try {
-      await persistSnapshot(dailyItems, nextExtraItems);
+      await persistSnapshot(activeDateValue, dailyItems, nextExtraItems);
     } catch (error) {
       console.error("Error deleting extra checklist:", error);
       setStatus("추가 업무 리스트 삭제에 실패했습니다.");
@@ -338,7 +339,7 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
     setExtraItems(nextExtraItems);
     handleCancelEditExtra();
     try {
-      await persistSnapshot(dailyItems, nextExtraItems);
+      await persistSnapshot(activeDateValue, dailyItems, nextExtraItems);
     } catch (error) {
       console.error("Error updating extra checklist:", error);
       setStatus("추가 업무 리스트 수정에 실패했습니다.");
