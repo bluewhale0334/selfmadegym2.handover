@@ -16,7 +16,18 @@ const getCollectionName = (category) => {
   return mapping[category] || null;
 };
 
-function SharedDocuments({ category, selectedDate, onNavigateToCategory, onDateSelect, user, profile, globalRefreshKey, onRefresh }) {
+function SharedDocuments({
+  category,
+  selectedDate,
+  onNavigateToCategory,
+  onDateSelect,
+  user,
+  profile,
+  globalRefreshKey,
+  onRefresh,
+  scrollTargetId,
+  onConsumeScrollTarget,
+}) {
   const textareaRef = useRef(null);
   const [isWriting, setIsWriting] = useState(false);
   const [content, setContent] = useState("");
@@ -35,6 +46,17 @@ function SharedDocuments({ category, selectedDate, onNavigateToCategory, onDateS
   const [editingComment, setEditingComment] = useState(null); // {documentId, commentIndex}
   const [editingCommentContent, setEditingCommentContent] = useState("");
   const editCommentTextareaRef = useRef(null);
+
+  useEffect(() => {
+    if (!scrollTargetId) {
+      return;
+    }
+    const targetElement = document.getElementById(`document-${scrollTargetId}`);
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      onConsumeScrollTarget?.();
+    }
+  }, [scrollTargetId, documents, onConsumeScrollTarget]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -1154,7 +1176,11 @@ function SharedDocuments({ category, selectedDate, onNavigateToCategory, onDateS
           <div className="documents-empty">문서가 없습니다.</div>
         ) : (
           documents.map((document) => (
-            <article key={document.id} className="document-item">
+            <article
+              key={document.id}
+              id={`document-${document.id}`}
+              className="document-item"
+            >
               <div className="document-header">
                 <div className="document-author">
                   <span

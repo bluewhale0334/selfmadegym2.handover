@@ -38,7 +38,20 @@ const getTagColor = (tagColor) => {
   return colors[tagColor] || "#b0b3b8";
 };
 
-function NoticeContent({ category, selectedDate, selectedSubCategory, onNavigateToCategory, onDateSelect, onSubCategorySelect, user, profile, globalRefreshKey, onRefresh }) {
+function NoticeContent({
+  category,
+  selectedDate,
+  selectedSubCategory,
+  onNavigateToCategory,
+  onDateSelect,
+  onSubCategorySelect,
+  user,
+  profile,
+  globalRefreshKey,
+  onRefresh,
+  scrollTarget,
+  onConsumeScrollTarget,
+}) {
   const sliderRef = useRef(null);
   const [isCardSectionCollapsed, setIsCardSectionCollapsed] = useState(true); // 기본적으로 닫힘
   const [unreadCards, setUnreadCards] = useState([]);
@@ -234,6 +247,8 @@ function NoticeContent({ category, selectedDate, selectedSubCategory, onNavigate
         onSubCategoryChange={onSubCategorySelect}
         globalRefreshKey={globalRefreshKey}
         onRefresh={onRefresh}
+        scrollTargetId={scrollTarget?.category === "전체 공지" ? scrollTarget?.documentId : null}
+        onConsumeScrollTarget={onConsumeScrollTarget}
       />
     </div>
   );

@@ -46,6 +46,130 @@
   height: 300px;
 }
 
+.dashboard-comment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dashboard-comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dashboard-comment-count {
+  font-size: 12px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.dashboard-comment-clear {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dashboard-comment-clear:hover {
+  color: var(--text);
+  border-color: rgba(90, 73, 52, 0.4);
+}
+
+.dashboard-comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+  padding-right: 4px;
+  flex: 1;
+  min-height: 0;
+}
+
+.dashboard-comment-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: left;
+  background: var(--card);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dashboard-comment-item:hover {
+  border-color: rgba(90, 73, 52, 0.4);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.dashboard-comment-item.is-read {
+  background: rgba(0, 0, 0, 0.03);
+  color: var(--muted);
+  border-color: rgba(90, 73, 52, 0.2);
+}
+
+.dashboard-comment-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: inherit;
+}
+
+.dashboard-comment-category {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.dashboard-comment-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dashboard-comment-author {
+  font-weight: 600;
+}
+
+.dashboard-comment-time {
+  color: inherit;
+  margin-left: auto;
+  font-size: 11px;
+}
+
+.dashboard-comment-content {
+  font-size: 13px;
+  color: inherit;
+}
+
+.dashboard-comment-doc {
+  font-size: 12px;
+  color: inherit;
+  opacity: 0.8;
+}
+
+.dashboard-comment-empty,
+.dashboard-comment-error {
+  font-size: 13px;
+  color: var(--muted);
+  padding: 12px 0;
+}
+
 .dashboard-right-bottom {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -11,7 +11,16 @@ const SUB_CATEGORIES = [
   "docs~노션 공지",
 ];
 
-function NoticeDocuments({ user, profile, selectedSubCategory: propSelectedSubCategory, onSubCategoryChange, globalRefreshKey, onRefresh }) {
+function NoticeDocuments({
+  user,
+  profile,
+  selectedSubCategory: propSelectedSubCategory,
+  onSubCategoryChange,
+  globalRefreshKey,
+  onRefresh,
+  scrollTargetId,
+  onConsumeScrollTarget,
+}) {
   const textareaRef = useRef(null);
   const [isWriting, setIsWriting] = useState(false);
   const [content, setContent] = useState("");
@@ -33,6 +42,17 @@ function NoticeDocuments({ user, profile, selectedSubCategory: propSelectedSubCa
   const [editingCommentContent, setEditingCommentContent] = useState("");
   const editCommentTextareaRef = useRef(null);
   const subCategoryMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!scrollTargetId) {
+      return;
+    }
+    const targetElement = document.getElementById(`document-${scrollTargetId}`);
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      onConsumeScrollTarget?.();
+    }
+  }, [scrollTargetId, documents, onConsumeScrollTarget]);
 
   // createdAt에서 날짜 추출 (YYYY-MM-DD 형식)
   const formatDateFromTimestamp = (timestamp) => {
@@ -1015,7 +1035,11 @@ function NoticeDocuments({ user, profile, selectedSubCategory: propSelectedSubCa
           <div className="documents-empty">문서가 없습니다.</div>
         ) : (
           documents.map((document) => (
-            <article key={document.id} className="document-item">
+            <article
+              key={document.id}
+              id={`document-${document.id}`}
+              className="document-item"
+            >
               <div className="document-header">
                 <div className="document-author">
                   <span

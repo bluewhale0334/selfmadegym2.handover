@@ -18,6 +18,7 @@ function DashboardPage({ user, onShowAuthPage }) {
   const [activeCategory, setActiveCategory] = useState("대시보드");
   const [activeDate, setActiveDate] = useState(null);
   const [activeSubCategory, setActiveSubCategory] = useState(null); // 전체 공지 하위 카테고리
+  const [scrollTarget, setScrollTarget] = useState(null); // { category, documentId, date, subCategory }
   const [expandedCategories, setExpandedCategories] = useState({});
   const [expandedYears, setExpandedYears] = useState({}); // 각 카테고리의 연도별 펼침 상태 { "업무 지시": { "2024": true, "2025": false } }
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -362,7 +363,17 @@ function DashboardPage({ user, onShowAuthPage }) {
 
   const renderContent = () => {
     const currentCategory = categories.find((c) => c.label === activeCategory);
-    if (!currentCategory) return <DashboardContent />;
+    if (!currentCategory) {
+      return (
+        <DashboardContent
+          user={user}
+          onNavigateToCategory={handleNavigateToCategory}
+          onDateSelect={handleDateSelect}
+          onSubCategorySelect={handleSubCategorySelect}
+          onSelectDocument={handleSelectDocument}
+        />
+      );
+    }
 
     const handleNavigateToCategory = (categoryLabel) => {
       setActiveCategory(categoryLabel);
@@ -402,6 +413,14 @@ function DashboardPage({ user, onShowAuthPage }) {
       setActiveDate(null);
     };
 
+    const handleSelectDocument = (target) => {
+      setScrollTarget(target);
+    };
+
+    const handleConsumeScrollTarget = () => {
+      setScrollTarget(null);
+    };
+
     const props = {
       category: activeCategory,
       selectedDate: activeDate,
@@ -411,13 +430,23 @@ function DashboardPage({ user, onShowAuthPage }) {
       onNavigateToCategory: handleNavigateToCategory,
       onDateSelect: handleDateSelect,
       onSubCategorySelect: handleSubCategorySelect,
+      scrollTarget: scrollTarget,
+      onConsumeScrollTarget: handleConsumeScrollTarget,
       globalRefreshKey: globalRefreshKey,
       onRefresh: () => setGlobalRefreshKey((prev) => prev + 1),
     };
 
     switch (activeCategory) {
       case "대시보드":
-        return <DashboardContent />;
+        return (
+          <DashboardContent
+            user={user}
+            onNavigateToCategory={handleNavigateToCategory}
+            onDateSelect={handleDateSelect}
+            onSubCategorySelect={handleSubCategorySelect}
+            onSelectDocument={handleSelectDocument}
+          />
+        );
       case "전체 공지":
         return <NoticeContent {...props} />;
       case "업무 지시":
@@ -429,7 +458,15 @@ function DashboardPage({ user, onShowAuthPage }) {
       case "업무 체크리스트":
         return <ChecklistContent {...props} />;
       default:
-        return <DashboardContent />;
+        return (
+          <DashboardContent
+            user={user}
+            onNavigateToCategory={handleNavigateToCategory}
+            onDateSelect={handleDateSelect}
+            onSubCategorySelect={handleSubCategorySelect}
+            onSelectDocument={handleSelectDocument}
+          />
+        );
     }
   };
 

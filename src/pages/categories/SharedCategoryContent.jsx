@@ -60,6 +60,8 @@ function SharedCategoryContent({
   profile,
   globalRefreshKey,
   onRefresh,
+  scrollTarget,
+  onConsumeScrollTarget,
 }) {
   const sliderRef = useRef(null);
   const [isCardSectionCollapsed, setIsCardSectionCollapsed] = useState(true); // 기본적으로 닫힘
@@ -259,6 +261,8 @@ function SharedCategoryContent({
           profile={profile}
           globalRefreshKey={globalRefreshKey}
           onRefresh={onRefresh}
+          scrollTargetId={scrollTarget?.category === category ? scrollTarget?.documentId : null}
+          onConsumeScrollTarget={onConsumeScrollTarget}
         />
       )}
     </div>
