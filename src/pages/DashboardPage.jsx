@@ -38,6 +38,7 @@ function DashboardPage({ user, onShowAuthPage }) {
   const updatesButtonRef = useRef(null);
   const updatesModalRef = useRef(null);
   const [suppressUpdatesUntil, setSuppressUpdatesUntil] = useState(null);
+  const [suppressUpdatesLoaded, setSuppressUpdatesLoaded] = useState(false);
   const [showHandoverModal, setShowHandoverModal] = useState(false); // 인수인계 모달 표시 여부
   const [customerUsers, setCustomerUsers] = useState([]); // customer 타입 사용자 목록
   const [selectedUser, setSelectedUser] = useState(null); // 선택된 사용자
@@ -587,21 +588,25 @@ App.jsx
   }, [showUpdatesModal, updateNotes]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setSuppressUpdatesLoaded(false);
+      return;
+    }
     const stored = localStorage.getItem(`updatesModalSuppressUntil:${user.uid}`);
     const parsed = stored ? Number(stored) : null;
     if (parsed && !Number.isNaN(parsed)) {
       setSuppressUpdatesUntil(parsed);
     }
+    setSuppressUpdatesLoaded(true);
   }, [user]);
 
   useEffect(() => {
-    if (!user || activeCategory !== "대시보드") return;
+    if (!user || activeCategory !== "대시보드" || !suppressUpdatesLoaded) return;
     if (suppressUpdatesUntil && suppressUpdatesUntil > Date.now()) {
       return;
     }
     setShowUpdatesModal(true);
-  }, [user, activeCategory, suppressUpdatesUntil]);
+  }, [user, activeCategory, suppressUpdatesUntil, suppressUpdatesLoaded]);
 
   const handleSuppressUpdatesForDay = () => {
     const next = Date.now() + 24 * 60 * 60 * 1000;
