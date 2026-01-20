@@ -64,7 +64,6 @@ function DashboardInContent({
   const [commentDocs, setCommentDocs] = useState({});
   const [commentError, setCommentError] = useState("");
   const [isLoadingComments, setIsLoadingComments] = useState(true);
-  const [hiddenReadKeys, setHiddenReadKeys] = useState(() => new Set());
   const sourceItemsRef = useRef({});
   const sourceDocsRef = useRef({});
   const sourceInitRef = useRef({});
@@ -75,7 +74,6 @@ function DashboardInContent({
       setCommentDocs({});
       setCommentError("");
       setIsLoadingComments(false);
-      setHiddenReadKeys(new Set());
       sourceItemsRef.current = {};
       sourceDocsRef.current = {};
       sourceInitRef.current = {};
@@ -104,18 +102,21 @@ function DashboardInContent({
                 return;
               }
               const readBy = comment.readBy || [];
-              const isRead = readBy.some((reader) => reader.userId === user.uid);
-            items.push({
+              const readEntry = readBy.find((reader) => reader.userId === user.uid);
+              const isRead = Boolean(readEntry);
+              const isHidden = Boolean(readEntry?.hiddenAt);
+              items.push({
                 category: source.label,
                 collectionName: source.collection,
                 documentId: docSnap.id,
                 documentKey: docKey,
                 documentContent: data.content || "",
                 documentDate: data.date || "",
-              documentSubCategory: data.subCategory || (source.label === "전체 공지" ? "현재 공지" : null),
+                documentSubCategory: data.subCategory || (source.label === "전체 공지" ? "현재 공지" : null),
                 commentIndex: index,
                 comment,
                 isRead,
+                isHidden,
               });
             });
           });
@@ -158,10 +159,7 @@ function DashboardInContent({
   }, [user]);
 
   const unreadCount = commentItems.filter((item) => !item.isRead).length;
-  const visibleCommentItems = commentItems.filter((item) => {
-    if (!item.isRead) return true;
-    return !hiddenReadKeys.has(item.documentKey);
-  });
+  const visibleCommentItems = commentItems.filter((item) => !item.isHidden);
 
   const handleCheckComment = async (item) => {
     if (!user || item.isRead) {
@@ -237,16 +235,73 @@ function DashboardInContent({
     }
   };
 
-  const handleClearReadNotifications = () => {
-    setHiddenReadKeys(() => {
-      const next = new Set();
-      commentItems.forEach((item) => {
-        if (item.isRead) {
-          next.add(item.documentKey);
-        }
-      });
-      return next;
+  const handleClearReadNotifications = async () => {
+    if (!user) return;
+
+    const updatesByDocKey = {};
+    const hiddenAt = Timestamp.now();
+
+    commentItems.forEach((item) => {
+      if (!item.isRead || item.isHidden) return;
+      const currentComments = updatesByDocKey[item.documentKey] || commentDocs[item.documentKey];
+      if (!currentComments || !currentComments[item.commentIndex]) return;
+
+      const updatedComments = updatesByDocKey[item.documentKey]
+        ? currentComments
+        : [...currentComments];
+      const targetComment = updatedComments[item.commentIndex];
+      const readBy = targetComment.readBy || [];
+      const readerIndex = readBy.findIndex((reader) => reader.userId === user.uid);
+      if (readerIndex === -1) return;
+
+      const updatedReadBy = [...readBy];
+      const currentReader = updatedReadBy[readerIndex];
+      if (currentReader.hiddenAt) return;
+
+      updatedReadBy[readerIndex] = {
+        ...currentReader,
+        hiddenAt,
+      };
+
+      updatedComments[item.commentIndex] = {
+        ...targetComment,
+        readBy: updatedReadBy,
+      };
+
+      updatesByDocKey[item.documentKey] = updatedComments;
     });
+
+    const updatesKeys = Object.keys(updatesByDocKey);
+    if (updatesKeys.length === 0) return;
+
+    const previousDocs = commentDocs;
+    const previousItems = commentItems;
+
+    setCommentDocs((prev) => ({ ...prev, ...updatesByDocKey }));
+    setCommentItems((prevItems) =>
+      prevItems.map((item) =>
+        updatesByDocKey[item.documentKey] && item.isRead && !item.isHidden
+          ? { ...item, isHidden: true }
+          : item
+      )
+    );
+
+    try {
+      await Promise.all(
+        updatesKeys.map((docKey) => {
+          const [collectionName, documentId] = docKey.split(":");
+          const docRef = doc(db, collectionName, documentId);
+          return updateDoc(docRef, {
+            comments: updatesByDocKey[docKey],
+          });
+        })
+      );
+    } catch (error) {
+      console.error("Error hiding read comments:", error);
+      setCommentDocs(previousDocs);
+      setCommentItems(previousItems);
+      setCommentError("읽은 댓글 숨김에 실패했습니다.");
+    }
   };
 
   return (
@@ -269,7 +324,7 @@ function DashboardInContent({
             <div className="dashboard-comment-header">
               <h3 className="dashboard-box-title">댓글 알림</h3>
               <div className="dashboard-comment-actions">
-                {unreadCount === 0 && commentItems.some((item) => item.isRead) && (
+                {unreadCount === 0 && commentItems.some((item) => item.isRead && !item.isHidden) && (
                   <button
                     type="button"
                     className="dashboard-comment-clear"
