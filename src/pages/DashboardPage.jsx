@@ -32,6 +32,12 @@ function DashboardPage({ user, onShowAuthPage }) {
   ];
   const [showProfileMenu, setShowProfileMenu] = useState(false); // 프로필 메뉴 표시 여부
   const profileMenuRef = useRef(null); // 프로필 메뉴 참조
+  const [showUpdatesModal, setShowUpdatesModal] = useState(false);
+  const [isClosingUpdatesModal, setIsClosingUpdatesModal] = useState(false);
+  const [updatesCloseTransform, setUpdatesCloseTransform] = useState({ x: 0, y: 0, scale: 1 });
+  const updatesButtonRef = useRef(null);
+  const updatesModalRef = useRef(null);
+  const [suppressUpdatesUntil, setSuppressUpdatesUntil] = useState(null);
   const [showHandoverModal, setShowHandoverModal] = useState(false); // 인수인계 모달 표시 여부
   const [customerUsers, setCustomerUsers] = useState([]); // customer 타입 사용자 목록
   const [selectedUser, setSelectedUser] = useState(null); // 선택된 사용자
@@ -55,6 +61,584 @@ function DashboardPage({ user, onShowAuthPage }) {
     }),
     []
   );
+
+  const updateNotes = useMemo(
+    () => [
+      {
+        version: "1.2.0",
+        content: `# handoverSM 1.2.0 - 변경사항
+
+## 주요 변경사항
+
+### 1. 카테고리 명칭 변경
+- **"업무 진행사항" → "업무 완료사항"**
+  - 사이드바/카테고리 표시/내부 안내 문구 일괄 변경
+
+### 2. 대시보드 댓글 알림 박스 추가
+- **대상**: 내가 작성한 문서에 달린 댓글
+- **범위**: 전체 공지 + 모든 카테고리 문서
+- **동작**
+  - 읽지 않은 댓글 우선 표시
+  - 읽은 댓글은 회색 처리 및 후순위 정렬
+  - 클릭 시 읽음 처리
+
+### 3. 알림 숨기기 버튼
+- **조건**: 새 댓글 0건일 때 표시
+- **기능**: 읽은 댓글 알림만 숨김 (댓글 데이터는 삭제하지 않음)
+
+### 4. 댓글 클릭 시 문서로 이동
+- 카테고리/날짜/하위 카테고리 자동 선택
+- 해당 문서까지 자동 스크롤
+
+## 기술적 변경사항
+- **DashboardInContent.jsx**
+  - 다중 컬렉션 \`onSnapshot\` 구독 및 댓글 집계
+  - 댓글 \`readBy\` 업데이트로 읽음 처리
+  - 알림 숨김 상태 로컬 관리
+- **DashboardPage.jsx**
+  - 문서 자동 스크롤 타겟 상태 전달
+- **SharedDocuments.jsx / NoticeDocuments.jsx**
+  - 문서 요소에 \`id\` 부여
+  - 스크롤 타겟 수신 시 자동 스크롤 처리`,
+      },
+      {
+        version: "1.1.2",
+        content: `# handoverSM 1.1.2 - 변경사항
+
+## 주요 변경사항
+
+### 1. 대시보드 레이아웃 리디자인
+- **좌/우 2분할 구조**
+  - 왼쪽: 전체 높이를 채우는 단일 박스
+  - 오른쪽: 상단 300px 고정 박스 + 하단 남은 영역
+- **하단 영역 2분할**
+  - 하단 영역을 가로로 나눠 좌/우 두 박스 구성
+
+### 2. 대시보드 구성 요소 분리
+- **DashboardInContent 컴포넌트 추가**
+  - 대시보드 레이아웃을 전용 컴포넌트로 분리
+  - 스타일을 전용 CSS 파일로 분리해 관리
+
+### 3. 댓글 줄바꿈 표시 수정
+- **멀티라인 댓글 유지**
+  - 댓글 본문에 \`white-space: pre-wrap\` 적용
+  - 입력한 줄바꿈이 화면에 그대로 표시되도록 개선`,
+      },
+      {
+        version: "1.1.1",
+        content: `# handoverSM 1.1.1 - 변경사항
+
+## 주요 변경사항
+
+### 1. 전체 공지 하위 카테고리 시스템
+- **하위 카테고리 추가**
+  - "현재 공지" (기본값)
+  - "docs~노션 공지"
+  - 사이드바에 토글로 표시
+  - 카테고리별 문서 필터링
+
+- **문서 구조 변경**
+  - \`subCategory\` 필드 추가 (notices 컬렉션)
+  - 하위 카테고리별 문서 분류
+  - 기존 문서 호환성 유지 (subCategory 없는 문서는 "현재 공지"로 간주)
+
+### 2. 전체 공지 전용 컴포넌트 분리
+- **NoticeDocuments.jsx 생성**
+  - SharedDocuments.jsx와 기능/디자인 동일
+  - 전체 공지 전용 로직 구현
+  - 날짜 필드 없음 (createdAt에서 날짜/시간 추출)
+
+- **문서 표시 형식**
+  - 작성자 - 날짜 - 시간 형식으로 표시
+  - 예: "홍길동 - 1월 15일 - 14시"
+
+### 3. 카테고리 설정 기능
+- **"카테고리 설정" 버튼**
+  - 작성하기 버튼 왼쪽에 배치
+  - 하위 카테고리 선택 드롭다운 메뉴
+  - 선택한 하위 카테고리로 문서 필터링
+  - 새 문서 작성 시 선택한 하위 카테고리로 저장
+
+### 4. 사이드바 하위 카테고리 표시
+- **전체 공지 클릭 시**
+  - 하위 카테고리 토글 표시 (펼치기/접기)
+  - 하위 카테고리 클릭 시 해당 카테고리로 필터링
+  - 기본값: "현재 공지" 자동 선택
+
+### 5. 연도별 네비게이션 계층 구조
+- **날짜 계층 구조 변경**
+  - 기존: 상위 카테고리 - 하위 카테고리(날짜)
+  - 변경: 상위 카테고리 - 하위 카테고리(연도) - 하위 카테고리(날짜)
+- **구현**
+  - 날짜 목록을 연도별로 그룹화
+  - 연도 클릭 시 해당 연도의 날짜 목록 펼침/접기
+  - 헤더에 연도 표시: \`업무 지시 > 2024 > 1월 15일\`
+  - 각 연도별 독립적인 "더보기/접기" 기능
+
+### 6. Admin CRUD 권한 개선
+- **모든 문서 수정/삭제 권한**
+  - Admin 사용자는 모든 문서의 수정/삭제 버튼 표시
+  - 작성자 여부와 관계없이 수정/삭제 가능
+  - Firestore Security Rules에서 admin 전체 CRUD 권한 부여
+
+- **Firestore Rules 단순화**
+  - \`isAuthorDisabled\`, \`isUserDisabled\` 헬퍼 함수 제거
+  - Admin 권한 체크 단순화
+  - Admin은 모든 문서 컬렉션에 대해 수정/삭제 가능
+
+### 7. Firestore 에러 핸들링 개선
+- **INTERNAL ASSERTION 오류 처리**
+  - 리스너 설정 시 안전한 cleanup 보장
+  - 문서 생성/삭제 시 INTERNAL ASSERTION 오류 특별 처리
+  - 에러 발생 시에도 기능 정상 동작 (onSnapshot 자동 동기화)
+
+- **리스너 안정성 개선**
+  - \`isMounted\` 플래그로 언마운트 후 상태 업데이트 방지
+  - 이전 리스너 cleanup 보장
+  - 스냅샷 유효성 검사 추가
+
+## 기술적 개선사항
+
+### 컴포넌트 구조 변경
+- **NoticeDocuments.jsx**: 전체 공지 전용 컴포넌트
+  - 날짜 필드 관련 로직 제거
+  - 하위 카테고리 필터링 로직 추가
+  - 작성자-날짜-시간 표시 형식
+
+- **DashboardPage.jsx**: 사이드바 하위 카테고리 지원
+  - \`activeSubCategory\` state 추가
+  - 하위 카테고리 토글 UI 추가
+  - 헤더에 하위 카테고리 표시
+
+### 상태 관리 개선
+- 하위 카테고리 선택 상태 관리
+- 연도별 펼침/접기 상태 관리 (\`expandedYears\`)
+- 카테고리-연도별 날짜 개수 관리 (\`visibleDateCounts\`)
+
+### 에러 처리 개선
+- Firestore INTERNAL ASSERTION 오류 조용히 처리
+- 문서 삭제 시 INTERNAL ASSERTION 오류 무시 (삭제는 성공)
+- 리스너 cleanup 시 에러 처리
+
+## UI/UX 개선사항
+
+### 사이드바 개선
+- 전체 공지 하위 카테고리 토글 표시
+- 연도별 계층 구조로 날짜 표시
+- 연도별 독립적인 펼침/접기 기능
+
+### 문서 표시 개선
+- 전체 공지 문서에 작성자-날짜-시간 형식 표시
+- 하위 카테고리별 문서 필터링
+
+### 헤더 표시 개선
+- 하위 카테고리 선택 시: \`전체 공지 > 현재 공지\`
+- 날짜 선택 시: \`업무 지시 > 2024 > 1월 15일\`
+
+## 데이터 구조 변경
+
+### notices 컬렉션
+\`\`\`javascript
+{
+  // 기존 필드
+  content: string,
+  authorId: string,
+  authorName: string,
+  tagColor: string,
+  createdAt: Timestamp,
+  readBy: [...],
+  comments: [...],
+  
+  // 새 필드
+  subCategory: string, // "현재 공지" | "docs~노션 공지"
+}
+\`\`\`
+
+## 주의사항
+- 기존 문서들은 데이터베이스에서 수동으로 \`subCategory\` 필드를 추가해야 함
+- 하위 카테고리 없는 문서는 "현재 공지"로 간주되어 필터링됨`,
+      },
+      {
+        version: "1.1.0",
+        content: `# handoverSM 1.1.0 - 변경사항
+
+## 주요 변경사항
+
+### 1. 대시보드 메인 설정
+- **변경**: 리프레시 시 로그인 화면 깜빡임 제거
+- **구현**: 대시보드를 항상 메인으로 표시, 로그인하지 않은 사용자도 대시보드 접근 가능
+- **효과**: 더 나은 사용자 경험, 페이지 전환 시 깜빡임 없음
+
+### 2. 인증 UI 개선
+- **로그인/회원가입 버튼 추가**
+  - 대시보드 헤더에 로그인/회원가입 버튼 표시
+  - 로그인하지 않은 사용자에게만 표시
+  - 버튼 클릭 시 AuthPage로 이동
+  - 회원가입 버튼 클릭 시 회원가입 모드로 자동 전환
+- **AuthPage 닫기 기능**
+  - 닫기 버튼 추가
+  - 대시보드로 돌아가기 가능
+
+### 3. 프로필 메뉴 시스템
+- **드롭다운 메뉴**
+  - 프로필 버튼 클릭 시 드롭다운 메뉴 표시/숨김
+  - 외부 클릭 시 자동 닫기
+  - 메뉴 항목:
+    - **프로필**: 클릭 시 "개발중입니다" 메시지 표시 (향후 구현 예정)
+    - **인수인계**: customer 타입 사용자 목록 표시 및 사용자 전환
+
+### 4. 인수인계 기능
+- **사용자 목록 표시**
+  - customer 타입 사용자 목록 조회
+  - 프로필 정보 표시 (태그 색상 원, 이름, 직책)
+  - 현재 로그인한 사용자 제외
+- **사용자 전환**
+  - 프로필 클릭 시 비밀번호 입력 폼 표시
+  - 비밀번호 확인 후 해당 사용자로 자동 전환
+  - \`signInWithEmailAndPassword\`를 사용한 사용자 전환
+  - 에러 처리 (잘못된 비밀번호, 사용자 없음 등)
+- **UI/UX**
+  - 모달 오버레이 (외부 클릭 시 닫기)
+  - Enter 키로 비밀번호 확인 가능
+  - 취소 버튼 (다시 사용자 선택으로 돌아가기)
+
+### 5. 프로필 정보 개선
+- **role 표시 개선**
+  - \`getDoc\` → \`onSnapshot\`으로 변경하여 실시간 업데이트
+  - 로그인 직후에도 role 정보 즉시 표시
+  - 프로필 정보 변경 시 자동 반영
+
+### 6. 사용자 타입 시스템
+- **user_type 필드 추가**
+  - 기본값: "customer"
+  - 회원가입 시 자동으로 "customer"로 설정
+  - 향후 "admin" 타입 지원 예정
+  - Firestore \`users\` 컬렉션에 저장
+
+### 7. Firestore Security Rules 업데이트
+- **users 컬렉션 권한 확장**
+  - 인증된 사용자는 자신의 문서 읽기/쓰기 가능
+  - 인증된 사용자는 customer 타입 사용자 목록 조회 가능 (인수인계 기능용)
+  - 규칙: \`allow read: if request.auth != null && (request.auth.uid == userId || resource.data.user_type == "customer")\`
+
+## 기술적 개선사항
+- **상태 관리**: 프로필 메뉴, 인수인계 모달 상태 관리 추가
+- **에러 처리**: Firestore 쿼리 에러 처리 개선 (인덱스 필요 시 명확한 메시지)
+- **디버깅**: customer 사용자 목록 조회 시 콘솔 로그 추가
+- **코드 구조**: 인수인계 관련 함수 분리 및 모듈화
+
+## UI/UX 개선사항
+- **모달 디자인**: 인수인계 모달 스타일 추가
+- **프로필 메뉴**: 드롭다운 메뉴 스타일 및 애니메이션
+- **버튼 스타일**: 로그인/회원가입 버튼 스타일 추가
+- **반응형**: 모달 및 메뉴 반응형 디자인
+
+## 다음 버전 계획
+- 프로필 편집 기능 구현
+- admin 타입 사용자 관리 기능
+- admin 가입 승인 시스템`,
+      },
+      {
+        version: "1.0.0",
+        content: `# handoverSM 1.0.0 - 개발자 노트
+
+## 프로젝트 개요
+업무 인수인계를 더 간단하게 관리할 수 있는 웹 애플리케이션입니다.
+
+## 기술 스택
+- **Frontend**: React 18 + Vite
+- **Backend**: Firebase (Authentication, Firestore)
+- **스타일링**: CSS (CSS Variables 사용)
+
+## 주요 기능
+
+### 1. 인증 시스템
+- **이메일/비밀번호 로그인**
+  - 세션 지속성 (browserLocalPersistence)
+  - 입력 검증 (이메일 형식, 비밀번호 길이)
+  - 에러 처리 (존재하지 않는 계정, 잘못된 비밀번호 등)
+
+- **회원가입**
+  - 필수 정보: 이메일, 비밀번호(6자 이상), 이름, 직책, 전화번호, 태그 색상
+  - 전화번호 형식 검증 (010-1234-5678)
+  - 태그 색상 중복 방지 (10가지 색상: 빨강, 주황, 노랑, 초록, 파랑, 보라, 분홍, 갈색, 회색, 검정)
+  - 사용 중인 태그 색상은 비활성화 및 사용자 이름 표시
+
+- **비밀번호 재설정**
+  - 이메일을 통한 비밀번호 재설정 링크 발송
+
+### 2. 사용자 프로필
+- **프로필 정보**
+  - 이름, 직책, 전화번호, 태그 색상
+  - Firestore \`users\` 컬렉션에 저장
+  - 헤더에 프로필 정보 표시 (태그 색상 원, 이름, 직책)
+
+### 3. 대시보드 레이아웃
+- **헤더**
+  - 앱 이름 (selfmadegym2)
+  - 현재 활성 카테고리/날짜 표시
+  - 프로필 버튼 (태그 색상, 이름, 직책)
+  - 로그아웃 버튼
+
+- **사이드바**
+  - 카테고리 목록
+  - 날짜별 하위 카테고리 (펼치기/접기)
+  - "더보기"/"접기" 버튼 (5개씩 표시)
+  - 카테고리별 활성 상태 표시
+
+### 4. 카테고리 시스템
+- **카테고리 구조**
+  - 대시보드 (날짜 하위 카테고리 없음)
+  - 전체 공지 (날짜 하위 카테고리 없음)
+  - 업무 지시 (날짜 하위 카테고리 있음)
+  - 일일 인수인계 (날짜 하위 카테고리 있음)
+  - 업무 완료사항 (날짜 하위 카테고리 있음)
+  - 업무 체크리스트 (날짜 하위 카테고리 있음, 사용자별 데이터)
+
+- **날짜별 하위 카테고리**
+  - 상위 카테고리 클릭: 해당 카테고리의 모든 문서 표시 (날짜별 정렬)
+  - 하위 카테고리 클릭: 해당 날짜의 문서만 표시
+  - 날짜 선택 버튼으로 새 날짜 문서 생성 가능
+  - 날짜 플래그 문서로 하위 카테고리 영구 저장
+
+### 5. NEW! 카드 섹션
+- **기능**
+  - 읽지 않은 문서를 카드 형태로 표시
+  - 본인이 작성한 문서 제외
+  - 이미 읽은 문서 제외
+  - 카테고리별, 날짜별 정렬
+  - 최대 5개 표시
+  - 좌우 슬라이드 네비게이션
+  - 카드 클릭 시 해당 문서의 카테고리/날짜로 이동
+
+- **상태 관리**
+  - 새로운 문서가 있을 때만 자동으로 열림
+  - 새로운 문서가 없을 때는 기본적으로 닫힘
+  - 새로운 문서가 없을 때 토글 클릭 시 "새로운 내용이 없습니다" 안내
+  - 새로운 문서가 없을 때 "NEW!" → "Not Event"로 텍스트 변경
+
+### 6. 문서 관리 (CRUD)
+- **문서 작성**
+  - 카테고리별 컬렉션에 저장
+  - 작성자 정보 (이름, 태그 색상, UID) 자동 저장
+  - 날짜 선택 가능 (날짜가 필요한 카테고리)
+  - 실시간 동기화 (onSnapshot)
+
+- **문서 수정**
+  - 작성자만 수정 가능
+  - 낙관적 업데이트로 즉시 UI 반영
+  - 실시간 동기화
+
+- **문서 삭제**
+  - 작성자만 삭제 가능
+  - 확인 다이얼로그
+  - 낙관적 업데이트로 즉시 UI 반영
+  - 실시간 동기화
+
+- **문서 목록**
+  - 날짜별 정렬 (하위 카테고리)
+  - 생성 시간별 정렬 (상위 카테고리)
+  - 작성자 정보 표시 (태그 색상, 이름, 날짜-시간)
+
+### 7. 내용 확인 기능
+- **기능**
+  - 본인이 작성하지 않은 문서에만 "내용 확인" 버튼 표시
+  - 클릭 시 \`readBy\` 배열에 사용자 정보 추가
+  - 확인한 사용자 목록 표시 (✓ 체크 표시, 태그 색상, 이름)
+  - 낙관적 업데이트로 즉시 UI 반영
+  - 실시간 동기화
+
+### 8. 댓글 시스템
+- **댓글 추가**
+  - 모든 문서에 댓글 추가 가능
+  - 작성자 정보 자동 저장 (태그 색상, 이름, UID)
+  - 최신 프로필 정보 사용
+  - 실시간 동기화
+
+- **댓글 수정**
+  - 본인이 작성한 댓글만 수정 가능
+  - 낙관적 업데이트로 즉시 UI 반영
+  - 실시간 동기화
+
+- **댓글 삭제**
+  - 본인이 작성한 댓글만 삭제 가능
+  - 확인 다이얼로그
+  - 낙관적 업데이트로 즉시 UI 반영
+  - 실시간 동기화
+
+- **댓글 표시**
+  - "색깔원 작성자:내용" 형식
+  - 문서 하단에 표시
+
+### 9. Firestore 데이터 구조
+- **컬렉션**
+  - \`users\`: 사용자 프로필 정보
+  - \`tagColors\`: 태그 색상 예약 정보
+  - \`notices\`: 전체 공지
+  - \`instructions\`: 업무 지시
+  - \`handovers\`: 일일 인수인계
+  - \`progresses\`: 업무 진행사항
+  - \`checklists\`: 업무 체크리스트 (사용자별)
+
+- **문서 구조**
+  \`\`\`javascript
+  {
+    content: string,
+    authorId: string,
+    authorName: string,
+    tagColor: string,
+    createdAt: Timestamp,
+    date: string (optional),
+    userId: string (checklists only),
+    readBy: [
+      {
+        userId: string,
+        userName: string,
+        tagColor: string,
+        readAt: Timestamp
+      }
+    ],
+    comments: [
+      {
+        userId: string,
+        userName: string,
+        tagColor: string,
+        content: string,
+        createdAt: Timestamp
+      }
+    ],
+    isDateFlag: boolean (optional)
+  }
+  \`\`\`
+
+### 10. Firestore 보안 규칙
+- **인증**
+  - 모든 컬렉션은 인증된 사용자만 접근 가능
+
+- **권한**
+  - 문서 작성: 모든 인증된 사용자
+  - 문서 수정/삭제: 작성자만
+  - \`readBy\` 업데이트: 모든 인증된 사용자 (본인만 추가)
+  - \`comments\` 업데이트: 모든 인증된 사용자 (댓글 추가/수정/삭제)
+
+- **특수 규칙**
+  - \`checklists\`: 사용자별로 읽기/쓰기 제한
+  - \`tagColors\`: 공개 읽기, 인증된 사용자만 쓰기
+
+### 11. 실시간 동기화
+- **onSnapshot 사용**
+  - 문서 목록 실시간 업데이트
+  - 날짜 목록 실시간 업데이트
+  - 카드 섹션 실시간 업데이트
+
+- **낙관적 업데이트**
+  - 문서 작성/수정/삭제 시 즉시 UI 반영
+  - 댓글 추가/수정/삭제 시 즉시 UI 반영
+  - 내용 확인 시 즉시 UI 반영
+  - 에러 발생 시 롤백
+
+### 12. 전역 리프레시 시스템
+- **globalRefreshKey**
+  - 모든 컴포넌트에서 공유하는 리프레시 키
+  - CRUD 작업 후 자동 리프레시
+  - 카드 섹션, 사이드바, 문서 목록 동시 업데이트
+
+## UI/UX 특징
+- **색상 테마**: 흰색/베이지 계열
+- **반응형 디자인**: Flexbox/Grid 레이아웃
+- **애니메이션**: 호버 효과, 전환 효과
+- **접근성**: aria-label, 키보드 네비게이션 지원
+
+## 주요 컴포넌트 구조
+\`\`\`
+App.jsx
+├── AuthPage.jsx (로그인/회원가입)
+└── DashboardPage.jsx
+    ├── DashboardContent.jsx
+    ├── NoticeContent.jsx
+    │   └── SharedCategoryContent.jsx
+    │       ├── NEW! 카드 섹션
+    │       └── SharedDocuments.jsx
+    │           ├── 문서 작성 폼
+    │           ├── 문서 목록
+    │           └── 댓글 시스템
+    ├── InstructionContent.jsx
+    ├── HandoverContent.jsx
+    ├── ProgressContent.jsx
+    └── ChecklistContent.jsx
+\`\`\`
+`,
+      },
+    ],
+    []
+  );
+  const [expandedUpdateVersions, setExpandedUpdateVersions] = useState(() => new Set(["1.2.0"]));
+  const currentVersionInfo = useMemo(
+    () => `## 버전 정보
+- **버전**: 1.2.0
+- **프로젝트명**: handoverSM
+- **개발 환경**: React + Vite + Firebase`,
+    []
+  );
+
+  useEffect(() => {
+    if (!showUpdatesModal) return;
+    setExpandedUpdateVersions(new Set([updateNotes[0]?.version].filter(Boolean)));
+  }, [showUpdatesModal, updateNotes]);
+
+  useEffect(() => {
+    if (!user) return;
+    const stored = localStorage.getItem(`updatesModalSuppressUntil:${user.uid}`);
+    const parsed = stored ? Number(stored) : null;
+    if (parsed && !Number.isNaN(parsed)) {
+      setSuppressUpdatesUntil(parsed);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || activeCategory !== "대시보드") return;
+    if (suppressUpdatesUntil && suppressUpdatesUntil > Date.now()) {
+      return;
+    }
+    setShowUpdatesModal(true);
+  }, [user, activeCategory, suppressUpdatesUntil]);
+
+  const handleSuppressUpdatesForDay = () => {
+    const next = Date.now() + 24 * 60 * 60 * 1000;
+    localStorage.setItem(`updatesModalSuppressUntil:${user.uid}`, String(next));
+    setSuppressUpdatesUntil(next);
+    triggerCloseUpdatesModal();
+  };
+
+  const triggerCloseUpdatesModal = () => {
+    if (isClosingUpdatesModal) return;
+    const buttonRect = updatesButtonRef.current?.getBoundingClientRect();
+    const modalRect = updatesModalRef.current?.getBoundingClientRect();
+    if (!buttonRect || !modalRect) {
+      setShowUpdatesModal(false);
+      return;
+    }
+    const targetX = buttonRect.left + buttonRect.width / 2;
+    const targetY = buttonRect.top + buttonRect.height / 2;
+    const modalX = modalRect.left + modalRect.width / 2;
+    const modalY = modalRect.top + modalRect.height / 2;
+    const scale = Math.min(
+      buttonRect.width / modalRect.width,
+      buttonRect.height / modalRect.height,
+      0.4
+    );
+    setUpdatesCloseTransform({
+      x: Math.round(targetX - modalX),
+      y: Math.round(targetY - modalY),
+      scale: Number.isFinite(scale) && scale > 0 ? scale : 0.2,
+    });
+    setIsClosingUpdatesModal(true);
+    setTimeout(() => {
+      setShowUpdatesModal(false);
+      setIsClosingUpdatesModal(false);
+      setUpdatesCloseTransform({ x: 0, y: 0, scale: 1 });
+    }, 280);
+  };
 
   const categories = useMemo(
     () => [
@@ -616,6 +1200,14 @@ function DashboardPage({ user, onShowAuthPage }) {
         <div className="dashboard-actions">
           {user ? (
             <>
+              <button
+                className="profile-button"
+                type="button"
+                ref={updatesButtonRef}
+                onClick={() => setShowUpdatesModal(true)}
+              >
+                업데이트 내역
+              </button>
               <div className="profile-menu-wrapper" ref={profileMenuRef}>
                 <button
                   className="profile-button"
@@ -877,6 +1469,75 @@ function DashboardPage({ user, onShowAuthPage }) {
           </section>
         </main>
       </div>
+      {/* 업데이트 내역 모달 */}
+      {showUpdatesModal && (
+        <div className="handover-modal-overlay">
+          <div
+            className={`handover-modal updates-modal${isClosingUpdatesModal ? " is-closing" : ""}`}
+            onClick={(e) => e.stopPropagation()}
+            ref={updatesModalRef}
+            style={{
+              "--updates-close-x": `${updatesCloseTransform.x}px`,
+              "--updates-close-y": `${updatesCloseTransform.y}px`,
+              "--updates-close-scale": updatesCloseTransform.scale,
+            }}
+          >
+            <div className="handover-modal-header">
+              <h2>업데이트 내역</h2>
+              <div className="updates-modal-actions">
+                <button
+                  type="button"
+                  className="updates-modal-suppress"
+                  onClick={handleSuppressUpdatesForDay}
+                >
+                  하루동안 보지 않기
+                </button>
+                <button
+                  type="button"
+                  className="handover-modal-close"
+                  onClick={triggerCloseUpdatesModal}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="handover-modal-content updates-modal-content">
+              {updateNotes.map((note) => {
+                const isOpen = expandedUpdateVersions.has(note.version);
+                return (
+                  <section key={note.version} className="updates-note">
+                    <div className="updates-note-header">
+                      <button
+                        type="button"
+                        className="updates-note-toggle"
+                        onClick={() => {
+                          setExpandedUpdateVersions((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(note.version)) {
+                              next.delete(note.version);
+                            } else {
+                              next.add(note.version);
+                            }
+                            return next;
+                          });
+                        }}
+                      >
+                        <span>{note.version}</span>
+                        <span>{isOpen ? "▲" : "▼"}</span>
+                      </button>
+                    </div>
+                    {isOpen && <pre className="updates-note-content">{note.content}</pre>}
+                  </section>
+                );
+              })}
+              <section className="updates-note updates-version-info">
+                <pre className="updates-note-content">{currentVersionInfo}</pre>
+              </section>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 인수인계 모달 */}
       {showHandoverModal && (
         <div className="handover-modal-overlay" onClick={() => setShowHandoverModal(false)}>

@@ -319,7 +319,7 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* ?�수?�계 모달 */
+/* ?�수?�계 모달 */
 .handover-modal-overlay {
   position: fixed;
   top: 0;
@@ -379,6 +379,101 @@
   padding: 24px;
   overflow-y: auto;
   flex: 1;
+}
+
+.updates-modal {
+  width: min(900px, 92vw);
+  transition: transform 0.28s ease, opacity 0.28s ease;
+  transform: translate(0, 0) scale(1);
+  opacity: 1;
+  transform-origin: center;
+}
+
+.updates-modal.is-closing {
+  transform: translate(var(--updates-close-x), var(--updates-close-y))
+    scale(var(--updates-close-scale));
+  opacity: 0;
+}
+
+.updates-modal-content {
+  max-height: min(70vh, 720px);
+}
+
+.updates-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.updates-modal-suppress {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.updates-modal-suppress:hover {
+  color: var(--text);
+  border-color: rgba(90, 73, 52, 0.4);
+}
+
+.updates-note {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.updates-note-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.updates-note-toggle {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.updates-note-toggle:hover {
+  border-color: rgba(90, 73, 52, 0.4);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.updates-note:first-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.updates-version-info {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.updates-note-content {
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+  margin: 0;
 }
 
 .handover-instruction {
