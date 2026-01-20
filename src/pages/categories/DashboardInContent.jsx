@@ -227,6 +227,8 @@ function DashboardInContent({
 
   const unreadCount = commentItems.filter((item) => !item.isRead).length;
   const visibleCommentItems = commentItems.filter((item) => !item.isHidden);
+  const shouldCompactComments =
+    !isLoadingComments && !commentError && visibleCommentItems.length === 0;
 
   const handleCheckComment = async (item) => {
     if (!user || item.isRead) {
@@ -404,7 +406,7 @@ function DashboardInContent({
           </div>
         </div>
         <div className="dashboard-right">
-          <div className="dashboard-right-top">
+          <div className={`dashboard-right-top${shouldCompactComments ? " is-compact" : ""}`}>
             <div className="dashboard-comment-header">
               <h3 className="dashboard-box-title">댓글 알림</h3>
               <div className="dashboard-comment-actions">
@@ -420,7 +422,6 @@ function DashboardInContent({
                 <span className="dashboard-comment-count">새 댓글 {unreadCount}건</span>
               </div>
             </div>
-            <p className="dashboard-box-body">내 인수인계 문서에 달린 댓글</p>
             <div className="dashboard-comment-list">
               {isLoadingComments && (
                 <div className="dashboard-comment-empty">댓글을 불러오는 중...</div>

@@ -131,6 +131,11 @@
   gap: 1rem;
 }
 
+.settings-user-list input[type="checkbox"],
+.settings-user-item input[type="checkbox"] {
+  display: none;
+}
+
 .settings-user-item {
   display: flex;
   align-items: center;

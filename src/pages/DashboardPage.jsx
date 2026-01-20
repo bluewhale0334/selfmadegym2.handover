@@ -819,7 +819,18 @@ App.jsx
     }));
   };
 
+  const closeSidebarOverlays = () => {
+    setShowChecklistSettingsPage(false);
+    setShowProfilePage(false);
+    setShowSettingsPage(false);
+  };
+
   const handleCategoryClick = (categoryLabel) => {
+    if (categoryLabel === "대시보드") {
+      window.location.reload();
+      return;
+    }
+    closeSidebarOverlays();
     // 전체보기만 수행 (토글은 하지 않음)
     setActiveCategory(categoryLabel);
     setActiveDate(null);
@@ -837,6 +848,7 @@ App.jsx
   };
 
   const handleSubCategoryClick = (subCategory) => {
+    closeSidebarOverlays();
     setActiveCategory("전체 공지");
     setActiveSubCategory(subCategory);
     setActiveDate(null);
@@ -887,6 +899,7 @@ App.jsx
   };
 
   const handleDateClick = (categoryLabel, date) => {
+    closeSidebarOverlays();
     setActiveCategory(categoryLabel);
     setActiveDate(date);
   };
