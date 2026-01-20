@@ -13,7 +13,7 @@ function DashboardInContent() {
 1. 전체 공지<br></br>
 2. 업무 지시<br></br>
 3. 일일 인수인계<br></br>
-4. 업무 진행사항<br></br></p>
+4. 업무 완료사항<br></br></p>
           </div>
         </div>
         <div className="dashboard-right">

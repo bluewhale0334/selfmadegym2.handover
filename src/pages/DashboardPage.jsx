@@ -61,7 +61,7 @@ function DashboardPage({ user, onShowAuthPage }) {
       { label: "전체 공지", type: "notice", hasDates: false },
       { label: "업무 지시", type: "instruction", hasDates: true },
       { label: "일일 인수인계", type: "handover", hasDates: true },
-      { label: "업무 진행사항", type: "progress", hasDates: true },
+      { label: "업무 완료사항", type: "progress", hasDates: true },
       { label: "업무 체크리스트", type: "checklist", hasDates: true },
     ],
     []
@@ -70,7 +70,7 @@ function DashboardPage({ user, onShowAuthPage }) {
   const [dateLists, setDateLists] = useState({
     "업무 지시": [],
     "일일 인수인계": [],
-    "업무 진행사항": [],
+    "업무 완료사항": [],
     "업무 체크리스트": [],
   });
 
@@ -81,7 +81,7 @@ function DashboardPage({ user, onShowAuthPage }) {
     const categoryCollections = {
       "업무 지시": "instructions",
       "일일 인수인계": "handovers",
-      "업무 진행사항": "progresses",
+      "업무 완료사항": "progresses",
       "업무 체크리스트": "checklists",
     };
 
@@ -281,7 +281,7 @@ function DashboardPage({ user, onShowAuthPage }) {
       const categoryCollections = {
         "업무 지시": "instructions",
         "일일 인수인계": "handovers",
-        "업무 진행사항": "progresses",
+        "업무 완료사항": "progresses",
         "업무 체크리스트": "checklists",
       };
 
@@ -424,7 +424,7 @@ function DashboardPage({ user, onShowAuthPage }) {
         return <InstructionContent {...props} />;
       case "일일 인수인계":
         return <HandoverContent {...props} />;
-      case "업무 진행사항":
+      case "업무 완료사항":
         return <ProgressContent {...props} />;
       case "업무 체크리스트":
         return <ChecklistContent {...props} />;

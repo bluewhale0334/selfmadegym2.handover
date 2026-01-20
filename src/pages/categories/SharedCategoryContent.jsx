@@ -8,7 +8,7 @@ const CATEGORY_ORDER = [
   "전체 공지",
   "업무 지시",
   "일일 인수인계",
-  "업무 진행사항",
+  "업무 완료사항",
   "업무 체크리스트",
 ];
 
@@ -18,7 +18,7 @@ const getCollectionName = (category) => {
     "전체 공지": "notices",
     "업무 지시": "instructions",
     "일일 인수인계": "handovers",
-    "업무 진행사항": "progresses",
+    "업무 완료사항": "progresses",
     "업무 체크리스트": "checklists",
   };
   return mapping[category] || null;
@@ -80,7 +80,7 @@ function SharedCategoryContent({
         { category: "전체 공지", collection: "notices", hasDate: false },
         { category: "업무 지시", collection: "instructions", hasDate: true },
         { category: "일일 인수인계", collection: "handovers", hasDate: true },
-        { category: "업무 진행사항", collection: "progresses", hasDate: true },
+        { category: "업무 완료사항", collection: "progresses", hasDate: true },
       ];
 
       const allCards = [];

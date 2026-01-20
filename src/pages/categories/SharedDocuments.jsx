@@ -10,7 +10,7 @@ const getCollectionName = (category) => {
     "전체 공지": "notices",
     "업무 지시": "instructions",
     "일일 인수인계": "handovers",
-    "업무 진행사항": "progresses",
+    "업무 완료사항": "progresses",
     "업무 체크리스트": "checklists",
   };
   return mapping[category] || null;
