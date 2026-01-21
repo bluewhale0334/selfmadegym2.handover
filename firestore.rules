@@ -162,6 +162,18 @@ service cloud.firestore {
         && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
+    // 반복 업무 체크리스트 - 사용자별 관리, admin 전체 관리
+    match /repeatChecklistTasks/{taskId} {
+      allow read: if request.auth != null
+        && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if request.auth != null
+        && (request.resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if request.auth != null
+        && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if request.auth != null
+        && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
     // 일일 체크리스트 스냅샷 - 사용자별 관리, admin 전체 관리
     match /dailyChecklistSnapshots/{snapshotId} {
       allow read: if request.auth != null

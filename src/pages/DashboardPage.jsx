@@ -70,6 +70,25 @@ function DashboardPage({ user, onShowAuthPage }) {
   const updateNotes = useMemo(
     () => [
       {
+        version: "1.3.2",
+        content: `# handoverSM 1.3.2 - 변경사항
+
+## 주요 변경사항
+
+### 1. 반복 업무 기능 추가
+- 반복 업무 탭/간격 옵션 추가
+- 반복 업무 복사 시 대상 근무시간 기준 재계산
+- 반복 업무 표시 범위: 현재시간 기준 -1시간 ~ +1시간
+
+### 2. 업무 리스트 화면 보강
+- 추가 업무 리스트 하단에 반복 업무 섹션 추가
+- 반복 업무 시간 소숫점 표기 개선 (예: 1.5 → 01:30)
+
+### 3. NEW 카드 슬라이더 안정화
+- 전체 공지 포함 좌우 슬라이드 동작 개선
+- NEW 카드 표시 제한 해제`,
+      },
+      {
         version: "1.3.1",
         content: `# handoverSM 1.3.1 - 변경사항
 
@@ -624,10 +643,10 @@ App.jsx
     ],
     []
   );
-  const [expandedUpdateVersions, setExpandedUpdateVersions] = useState(() => new Set(["1.3.1"]));
+  const [expandedUpdateVersions, setExpandedUpdateVersions] = useState(() => new Set(["1.3.2"]));
   const currentVersionInfo = useMemo(
     () => `## 버전 정보
-- **버전**: 1.3.1
+- **버전**: 1.3.2
 - **프로젝트명**: handoverSM
 - **개발 환경**: React + Vite + Firebase`,
     []

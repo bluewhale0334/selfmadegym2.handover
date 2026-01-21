@@ -21,9 +21,18 @@ const getSnapshotDocId = (userId, date) => {
   return `${userId}_${date}`;
 };
 
+const formatRepeatItemTime = (value) => {
+  if (typeof value !== "number" || Number.isNaN(value)) return "--:--";
+  const hour = Math.floor(value);
+  const decimal = Math.abs(value - hour);
+  const minute = decimal >= 0.5 ? 30 : 0;
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+};
+
 function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profile }) {
   const [dailyItems, setDailyItems] = useState([]);
   const [extraItems, setExtraItems] = useState([]);
+  const [repeatItems, setRepeatItems] = useState([]);
   const [newExtraTitle, setNewExtraTitle] = useState("");
   const [editingExtraIndex, setEditingExtraIndex] = useState(null);
   const [editingExtraTitle, setEditingExtraTitle] = useState("");
@@ -40,6 +49,7 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
   const [showDateAdder, setShowDateAdder] = useState(false);
   const [pendingSelectDate, setPendingSelectDate] = useState(formatToday);
   const [pendingAddDate, setPendingAddDate] = useState(formatToday);
+  const [nowTick, setNowTick] = useState(() => Date.now());
 
   const isAdmin = profile?.user_type === "admin";
   const today = formatToday();
@@ -182,12 +192,33 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
       });
     });
 
+    const repeatQuery = query(
+      collection(db, "repeatChecklistTasks"),
+      where("userId", "==", targetUserId)
+    );
+    const repeatSnapshot = await getDocs(repeatQuery);
+    const repeatItems = [];
+    repeatSnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      const hours = Array.isArray(data.hours) ? data.hours : [];
+      hours.forEach((hour) => {
+        repeatItems.push({
+          title: data.title || "",
+          hour,
+          minute: 0,
+          done: false,
+          completedAt: null,
+        });
+      });
+    });
+
     await setDoc(snapshotRef, {
       userId: targetUserId,
       date: dateValue,
       createdAt: Timestamp.now(),
       items,
       extraItems: [],
+      repeatItems,
     });
     return true;
   };
@@ -203,14 +234,64 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
         const snapshotDoc = await getDoc(snapshotRef);
         if (snapshotDoc.exists()) {
           const data = snapshotDoc.data();
-          setDailyItems(Array.isArray(data.items) ? data.items : []);
-          setExtraItems(Array.isArray(data.extraItems) ? data.extraItems : []);
+          const nextDailyItems = Array.isArray(data.items) ? data.items : [];
+          const nextExtraItems = Array.isArray(data.extraItems) ? data.extraItems : [];
+          const existingRepeatItems = Array.isArray(data.repeatItems) ? data.repeatItems : [];
+          setDailyItems(nextDailyItems);
+          setExtraItems(nextExtraItems);
+
+          if (activeDateValue === today) {
+            const repeatQuery = query(
+              collection(db, "repeatChecklistTasks"),
+              where("userId", "==", targetUserId)
+            );
+            const repeatSnapshot = await getDocs(repeatQuery);
+            const repeatItems = [];
+            repeatSnapshot.forEach((docSnap) => {
+              const repeatData = docSnap.data();
+              const hours = Array.isArray(repeatData.hours) ? repeatData.hours : [];
+              hours.forEach((hour) => {
+                repeatItems.push({
+                  title: repeatData.title || "",
+                  hour,
+                  minute: 0,
+                  done: false,
+                  completedAt: null,
+                });
+              });
+            });
+
+            const existingMap = new Map(
+              existingRepeatItems.map((item) => [
+                `${item.title}-${item.hour}-${item.minute ?? 0}`,
+                item,
+              ])
+            );
+            const mergedRepeatItems = repeatItems.map((item) => {
+              const key = `${item.title}-${item.hour}-${item.minute ?? 0}`;
+              const saved = existingMap.get(key);
+              return saved ? { ...item, done: saved.done, completedAt: saved.completedAt } : item;
+            });
+            setRepeatItems(mergedRepeatItems);
+
+            if (mergedRepeatItems.length !== existingRepeatItems.length) {
+              await updateDoc(snapshotRef, {
+                repeatItems: mergedRepeatItems,
+                updatedAt: Timestamp.now(),
+              });
+            }
+          } else {
+            setRepeatItems(existingRepeatItems);
+          }
+
           setIsLoading(false);
           return;
         }
 
         if (activeDateValue !== today) {
           setDailyItems([]);
+          setExtraItems([]);
+          setRepeatItems([]);
           setStatus("선택한 날짜의 업무 리스트가 없습니다.");
           setIsLoading(false);
           return;
@@ -218,6 +299,8 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
 
         if (targetUserId !== user?.uid) {
           setDailyItems([]);
+          setExtraItems([]);
+          setRepeatItems([]);
           setStatus("선택한 사용자의 오늘 업무 리스트가 아직 생성되지 않았습니다.");
           setIsLoading(false);
           return;
@@ -246,15 +329,37 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
           });
         });
 
+        const repeatQuery = query(
+          collection(db, "repeatChecklistTasks"),
+          where("userId", "==", targetUserId)
+        );
+        const repeatSnapshot = await getDocs(repeatQuery);
+        const repeatItems = [];
+        repeatSnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const hours = Array.isArray(data.hours) ? data.hours : [];
+          hours.forEach((hour) => {
+            repeatItems.push({
+              title: data.title || "",
+              hour,
+              minute: 0,
+              done: false,
+              completedAt: null,
+            });
+          });
+        });
+
         await setDoc(snapshotRef, {
           userId: targetUserId,
           date: activeDateValue,
           createdAt: Timestamp.now(),
           items,
           extraItems: [],
+          repeatItems,
         });
         setDailyItems(items);
         setExtraItems([]);
+        setRepeatItems(repeatItems);
       } catch (error) {
         console.error("Error loading daily checklist:", error);
         setStatus("업무 리스트를 불러오지 못했습니다.");
@@ -264,15 +369,35 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
     };
 
     loadDailyChecklist();
-  }, [targetUserId, activeDateValue, today, user?.uid]);
+  }, [targetUserId, activeDateValue, today, user?.uid, nowTick]);
 
-  const persistSnapshot = async (dateValue, nextItems, nextExtraItems) => {
+  useEffect(() => {
+    let timeoutId;
+    const schedule = () => {
+      const now = new Date();
+      const next = new Date(now);
+      next.setMinutes(1, 0, 0);
+      if (now >= next) {
+        next.setHours(now.getHours() + 1, 1, 0, 0);
+      }
+      const delay = Math.max(0, next.getTime() - now.getTime());
+      timeoutId = setTimeout(() => {
+        setNowTick(Date.now());
+        schedule();
+      }, delay);
+    };
+    schedule();
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  const persistSnapshot = async (dateValue, nextItems, nextExtraItems, nextRepeatItems) => {
     if (!targetUserId) return;
     const snapshotId = getSnapshotDocId(targetUserId, dateValue);
     const snapshotRef = doc(db, "dailyChecklistSnapshots", snapshotId);
     await updateDoc(snapshotRef, {
       items: nextItems,
       extraItems: nextExtraItems,
+      repeatItems: nextRepeatItems,
       updatedAt: Timestamp.now(),
     });
   };
@@ -301,13 +426,24 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
           }
         : item
     );
+    const nextRepeatItems = repeatItems.map((item, itemIndex) =>
+      itemIndex === index && type === "repeat"
+        ? {
+            ...item,
+            done: !item.done,
+            completedAt: item.done ? null : completedAt,
+          }
+        : item
+    );
     if (type === "main") {
       setDailyItems(nextItems);
-    } else {
+    } else if (type === "extra") {
       setExtraItems(nextExtraItems);
+    } else {
+      setRepeatItems(nextRepeatItems);
     }
     try {
-      await persistSnapshot(activeDateValue, nextItems, nextExtraItems);
+      await persistSnapshot(activeDateValue, nextItems, nextExtraItems, nextRepeatItems);
     } catch (error) {
       console.error("Error updating daily checklist:", error);
       setStatus("업무 리스트 저장에 실패했습니다.");
@@ -330,7 +466,7 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
     setExtraItems(nextExtraItems);
     setNewExtraTitle("");
     try {
-      await persistSnapshot(activeDateValue, dailyItems, nextExtraItems);
+      await persistSnapshot(activeDateValue, dailyItems, nextExtraItems, repeatItems);
     } catch (error) {
       console.error("Error adding extra checklist:", error);
       setStatus("추가 업무 리스트 저장에 실패했습니다.");
@@ -341,7 +477,7 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
     const nextExtraItems = extraItems.filter((_, itemIndex) => itemIndex !== index);
     setExtraItems(nextExtraItems);
     try {
-      await persistSnapshot(activeDateValue, dailyItems, nextExtraItems);
+      await persistSnapshot(activeDateValue, dailyItems, nextExtraItems, repeatItems);
     } catch (error) {
       console.error("Error deleting extra checklist:", error);
       setStatus("추가 업무 리스트 삭제에 실패했습니다.");
@@ -369,7 +505,7 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
     setExtraItems(nextExtraItems);
     handleCancelEditExtra();
     try {
-      await persistSnapshot(activeDateValue, dailyItems, nextExtraItems);
+      await persistSnapshot(activeDateValue, dailyItems, nextExtraItems, repeatItems);
     } catch (error) {
       console.error("Error updating extra checklist:", error);
       setStatus("추가 업무 리스트 수정에 실패했습니다.");
@@ -411,7 +547,7 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
       items: grouped[category].filter((item) => !item.done).sort(sortByTime),
     }));
 
-    const completed = [...dailyItems, ...extraItems]
+    const completed = [...dailyItems, ...extraItems, ...repeatItems]
       .filter((item) => item.done)
       .sort((a, b) => {
         const aTime = a.completedAt || "";
@@ -420,7 +556,20 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
       });
 
     return { pending, completed };
-  }, [dailyItems, extraItems, activeWeekday, activeMonthDay]);
+  }, [dailyItems, extraItems, repeatItems, activeWeekday, activeMonthDay]);
+
+  const visibleRepeatItems = useMemo(() => {
+    if (activeDateValue !== today) return [];
+    const now = new Date(nowTick);
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    return repeatItems.filter((item) => {
+      if (item.done) return false;
+      if (typeof item.hour !== "number") return false;
+      const minute = typeof item.minute === "number" ? item.minute : 0;
+      const itemMinutes = item.hour * 60 + minute;
+      return itemMinutes >= nowMinutes - 60 && itemMinutes <= nowMinutes + 60;
+    });
+  }, [repeatItems, nowTick, activeDateValue, today]);
   return (
     <section className="checklist-overview">
       <div className="checklist-date-indicator">
@@ -655,6 +804,31 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
                   ))}
                 </div>
               )}
+              <div className="checklist-section-divider" aria-hidden="true" />
+              <div className="checklist-section-header checklist-section-header-tight">
+                <h2 className="checklist-box-title">반복 업무</h2>
+              </div>
+              {visibleRepeatItems.length === 0 ? (
+                <p className="checklist-box-body">등록된 반복 업무가 없습니다.</p>
+              ) : (
+                <div className="checklist-extra-items">
+                  {visibleRepeatItems.map((item, index) => (
+                    <div key={`repeat-${index}`} className="checklist-extra-item">
+                      <label className={`checklist-daily-item${item.done ? " done" : ""}`}>
+                        <input
+                          type="checkbox"
+                          checked={item.done}
+                          onChange={() => handleToggleDone(repeatItems.indexOf(item), "repeat")}
+                        />
+                        <span className="checklist-daily-item-meta">
+                          {formatRepeatItemTime(item.hour)}
+                        </span>
+                        <span className="checklist-daily-item-title">{item.title}</span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -679,7 +853,13 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
                         const index = dailyItems.indexOf(item);
                         if (index === -1) {
                           const extraIndex = extraItems.indexOf(item);
-                          handleToggleDone(extraIndex, "extra");
+                          if (extraIndex !== -1) {
+                            handleToggleDone(extraIndex, "extra");
+                          }
+                          const repeatIndex = repeatItems.indexOf(item);
+                          if (repeatIndex !== -1) {
+                            handleToggleDone(repeatIndex, "repeat");
+                          }
                           return;
                         }
                         handleToggleDone(index, "main");
