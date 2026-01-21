@@ -132,7 +132,10 @@ service cloud.firestore {
     // 업무 체크리스트 - 사용자별로 읽기/쓰기 가능, 수정/삭제는 작성자만 또는 admin
     match /checklists/{checklistId} {
       allow read: if request.auth != null
-        && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+        && (resource == null
+            || resource.data.userId == request.auth.uid
+            || resource.data.authorId == request.auth.uid
+            || isAdmin());
       allow create: if request.auth != null
         && request.resource.data.userId == request.auth.uid;
       allow update: if request.auth != null

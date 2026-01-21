@@ -56,6 +56,15 @@ function NoticeContent({
   const [isCardSectionCollapsed, setIsCardSectionCollapsed] = useState(true); // 기본적으로 닫힘
   const [unreadCards, setUnreadCards] = useState([]);
   const [showNoNewContentMessage, setShowNoNewContentMessage] = useState(false);
+  const scrollCards = (offset) => {
+    const slider = sliderRef.current;
+    if (!slider) return;
+    if (typeof slider.scrollBy === "function") {
+      slider.scrollBy({ left: offset, behavior: "smooth" });
+      return;
+    }
+    slider.scrollLeft += offset;
+  };
 
   // Firestore에서 최근 문서 가져오기 (NEW! 카드용)
   useEffect(() => {
@@ -132,13 +141,10 @@ function NoticeContent({
         return 0;
       });
 
-      // 최대 5개로 제한 (읽지 않은 문서만)
-      const finalCards = ordered.slice(0, 5);
-      console.log("Unread cards fetched:", finalCards.length);
-      setUnreadCards(finalCards);
+      setUnreadCards(ordered);
       
       // 새로운 문서가 있으면 자동으로 열림, 없으면 닫힘
-      if (finalCards.length > 0) {
+      if (ordered.length > 0) {
         setIsCardSectionCollapsed(false);
       } else {
         setIsCardSectionCollapsed(true);
@@ -188,9 +194,7 @@ function NoticeContent({
             type="button"
             className="slider-button left"
             aria-label="이전 카드"
-            onClick={() =>
-              sliderRef.current?.scrollBy({ left: -236, behavior: "smooth" })
-            }
+            onClick={() => scrollCards(-236)}
           >
             ‹
           </button>
@@ -232,9 +236,7 @@ function NoticeContent({
             type="button"
             className="slider-button right"
             aria-label="다음 카드"
-            onClick={() =>
-              sliderRef.current?.scrollBy({ left: 236, behavior: "smooth" })
-            }
+            onClick={() => scrollCards(236)}
           >
             ›
           </button>
