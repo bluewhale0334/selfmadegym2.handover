@@ -1,6 +1,17 @@
 import SharedCategoryContent from "./SharedCategoryContent";
 
-function ProgressContent({ category, selectedDate, onNavigateToCategory, onDateSelect, user, profile, globalRefreshKey, onRefresh }) {
+function ProgressContent({
+  category,
+  selectedDate,
+  onNavigateToCategory,
+  onDateSelect,
+  user,
+  profile,
+  globalRefreshKey,
+  onRefresh,
+  scrollTarget,
+  onConsumeScrollTarget,
+}) {
   return (
     <SharedCategoryContent
       category={category}
@@ -11,6 +22,8 @@ function ProgressContent({ category, selectedDate, onNavigateToCategory, onDateS
       profile={profile}
       globalRefreshKey={globalRefreshKey}
       onRefresh={onRefresh}
+      scrollTarget={scrollTarget}
+      onConsumeScrollTarget={onConsumeScrollTarget}
     />
   );
 }

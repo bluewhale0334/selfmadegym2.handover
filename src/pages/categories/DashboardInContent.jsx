@@ -92,7 +92,7 @@ function DashboardInContent({
     sourceInitRef.current = {};
 
     const unsubscribes = COMMENT_SOURCES.map((source) => {
-      const q = query(collection(db, source.collection), where("authorId", "==", user.uid));
+      const q = query(collection(db, source.collection));
       return onSnapshot(
         q,
         (snapshot) => {
@@ -101,6 +101,11 @@ function DashboardInContent({
           snapshot.forEach((docSnap) => {
             const data = docSnap.data();
             const comments = data.comments || [];
+            const isAuthor = data.authorId === user.uid;
+            const hasCommented = comments.some((comment) => comment.userId === user.uid);
+            if (!isAuthor && !hasCommented) {
+              return;
+            }
             const docKey = getDocKey(source.collection, docSnap.id);
             docsMap[docKey] = comments;
             comments.forEach((comment, index) => {
@@ -289,12 +294,6 @@ function DashboardInContent({
 
   const handleCommentClick = (item) => {
     handleCheckComment(item);
-    onSelectDocument?.({
-      category: item.category,
-      documentId: item.documentId,
-      date: item.documentDate || null,
-      subCategory: item.documentSubCategory || null,
-    });
     onNavigateToCategory?.(item.category);
     if (item.category === "전체 공지" && item.documentSubCategory) {
       onSubCategorySelect?.(item.documentSubCategory);
@@ -302,6 +301,14 @@ function DashboardInContent({
     if (item.documentDate) {
       onDateSelect?.(item.category, item.documentDate);
     }
+    setTimeout(() => {
+      onSelectDocument?.({
+        category: item.category,
+        documentId: item.documentId,
+        date: item.documentDate || null,
+        subCategory: item.documentSubCategory || null,
+      });
+    }, 120);
   };
 
   const handleClearReadNotifications = async () => {

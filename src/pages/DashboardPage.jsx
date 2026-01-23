@@ -14,6 +14,8 @@ import ProfilePage from "./ProfilePage";
 import SettingsPage from "./SettingsPage";
 import ChecklistSettingsPage from "./ChecklistSettingsPage";
 import EmployeeStatsPage from "./EmployeeStatsPage";
+import MyPostsPage from "./MyPostsPage";
+import SearchPage from "./SearchPage";
 
 function DashboardPage({ user, onShowAuthPage }) {
   const [profile, setProfile] = useState(null);
@@ -50,6 +52,10 @@ function DashboardPage({ user, onShowAuthPage }) {
   const [showSettingsPage, setShowSettingsPage] = useState(false); // 환경설정 페이지 표시 여부
   const [showChecklistSettingsPage, setShowChecklistSettingsPage] = useState(false);
   const [showEmployeeStatsPage, setShowEmployeeStatsPage] = useState(false);
+  const [showMyPostsPage, setShowMyPostsPage] = useState(false);
+  const [showSearchPage, setShowSearchPage] = useState(false);
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [submittedSearchKeyword, setSubmittedSearchKeyword] = useState("");
 
   const tagColors = useMemo(
     () => ({
@@ -69,6 +75,24 @@ function DashboardPage({ user, onShowAuthPage }) {
 
   const updateNotes = useMemo(
     () => [
+      {
+        version: "1.3.3",
+        content: `# handoverSM 1.3.3 - 변경사항
+
+## 주요 변경사항
+
+### 1. 검색 기능 추가
+- 헤더 검색어 입력 후 검색 페이지로 이동
+- 공지/지시/인수인계/업무완료 검색 결과 표시
+- 본문/댓글 구분 라벨 표시
+- 본문/댓글 하이라이트 표시
+
+### 2. 업데이트 내역 모달 개선
+- "일주일 동안 보지 않기" 옵션 추가
+
+### 3. 댓글 알림 이동 보강
+- 업무 지시/일일 인수인계/업무 완료사항 스크롤 이동 지원`,
+      },
       {
         version: "1.3.2",
         content: `# handoverSM 1.3.2 - 변경사항
@@ -678,8 +702,8 @@ App.jsx
     setShowUpdatesModal(true);
   }, [user, activeCategory, suppressUpdatesUntil, suppressUpdatesLoaded]);
 
-  const handleSuppressUpdatesForDay = () => {
-    const next = Date.now() + 24 * 60 * 60 * 1000;
+  const handleSuppressUpdatesForWeek = () => {
+    const next = Date.now() + 7 * 24 * 60 * 60 * 1000;
     localStorage.setItem(`updatesModalSuppressUntil:${user.uid}`, String(next));
     setSuppressUpdatesUntil(next);
     triggerCloseUpdatesModal();
@@ -863,6 +887,18 @@ App.jsx
     setShowProfilePage(false);
     setShowSettingsPage(false);
     setShowEmployeeStatsPage(false);
+    setShowMyPostsPage(false);
+    setShowSearchPage(false);
+  };
+
+  const openSearchPage = () => {
+    setSubmittedSearchKeyword(searchKeyword.trim());
+    setShowSearchPage(true);
+    setShowProfilePage(false);
+    setShowSettingsPage(false);
+    setShowChecklistSettingsPage(false);
+    setShowEmployeeStatsPage(false);
+    setShowMyPostsPage(false);
   };
 
   const handleCategoryClick = (categoryLabel) => {
@@ -1291,6 +1327,41 @@ App.jsx
             ? `${activeCategory} > ${activeSubCategory}`
             : activeCategory}
         </div>
+        <div className="dashboard-search">
+          <input
+            type="text"
+            placeholder="검색어를 입력하세요"
+            className="dashboard-search-input"
+            value={searchKeyword}
+            onChange={(event) => setSearchKeyword(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                openSearchPage();
+              }
+            }}
+          />
+          <button
+            type="button"
+            className="dashboard-search-button"
+            aria-label="검색"
+            onClick={openSearchPage}
+          >
+            🔍
+          </button>
+        </div>
+        <button
+          type="button"
+          className="dashboard-my-posts-button"
+          onClick={() => {
+            setShowMyPostsPage(true);
+            setShowProfilePage(false);
+            setShowSettingsPage(false);
+            setShowChecklistSettingsPage(false);
+            setShowEmployeeStatsPage(false);
+          }}
+        >
+          내 글 보기
+        </button>
         <div className="dashboard-actions">
           {user ? (
             <>
@@ -1561,7 +1632,12 @@ App.jsx
         )}
         <main className="dashboard-main">
           <section className="dashboard-content">
-            {showProfilePage ? (
+            {showSearchPage ? (
+              <SearchPage
+                query={submittedSearchKeyword}
+                onClose={() => setShowSearchPage(false)}
+              />
+            ) : showProfilePage ? (
               <ProfilePage
                 user={user}
                 profile={profile}
@@ -1584,6 +1660,12 @@ App.jsx
                 user={user}
                 profile={profile}
                 onClose={() => setShowEmployeeStatsPage(false)}
+              />
+            ) : showMyPostsPage ? (
+              <MyPostsPage
+                user={user}
+                profile={profile}
+                onClose={() => setShowMyPostsPage(false)}
               />
             ) : (
               renderContent()
@@ -1610,9 +1692,9 @@ App.jsx
                 <button
                   type="button"
                   className="updates-modal-suppress"
-                  onClick={handleSuppressUpdatesForDay}
+                  onClick={handleSuppressUpdatesForWeek}
                 >
-                  하루동안 보지 않기
+                  일주일 동안 보지 않기
                 </button>
                 <button
                   type="button"

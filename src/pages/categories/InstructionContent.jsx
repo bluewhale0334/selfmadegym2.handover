@@ -1,6 +1,17 @@
 import SharedCategoryContent from "./SharedCategoryContent";
 
-function InstructionContent({ category, selectedDate, onNavigateToCategory, onDateSelect, user, profile, globalRefreshKey, onRefresh }) {
+function InstructionContent({
+  category,
+  selectedDate,
+  onNavigateToCategory,
+  onDateSelect,
+  user,
+  profile,
+  globalRefreshKey,
+  onRefresh,
+  scrollTarget,
+  onConsumeScrollTarget,
+}) {
   return (
     <SharedCategoryContent
       category={category}
@@ -11,6 +22,8 @@ function InstructionContent({ category, selectedDate, onNavigateToCategory, onDa
       profile={profile}
       globalRefreshKey={globalRefreshKey}
       onRefresh={onRefresh}
+      scrollTarget={scrollTarget}
+      onConsumeScrollTarget={onConsumeScrollTarget}
     />
   );
 }
