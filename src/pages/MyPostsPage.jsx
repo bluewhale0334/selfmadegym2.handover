@@ -76,7 +76,11 @@ function MyPostsPage({ user, profile, onClose }) {
       const posts = [];
       const comments = [];
       for (const target of COLLECTIONS) {
-        const snapshot = await getDocs(collection(db, target.name));
+        const baseRef = collection(db, target.name);
+        const snapshot =
+          target.name === "checklists"
+            ? await getDocs(query(baseRef, where("userId", "==", selectedUserId)))
+            : await getDocs(baseRef);
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
           const createdAt = extractTimestamp(data.createdAt);

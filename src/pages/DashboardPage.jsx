@@ -1349,22 +1349,22 @@ App.jsx
             🔍
           </button>
         </div>
-        <button
-          type="button"
-          className="dashboard-my-posts-button"
-          onClick={() => {
-            setShowMyPostsPage(true);
-            setShowProfilePage(false);
-            setShowSettingsPage(false);
-            setShowChecklistSettingsPage(false);
-            setShowEmployeeStatsPage(false);
-          }}
-        >
-          내 글 보기
-        </button>
         <div className="dashboard-actions">
           {user ? (
             <>
+              <button
+                type="button"
+                className="dashboard-my-posts-button"
+                onClick={() => {
+                  setShowMyPostsPage(true);
+                  setShowProfilePage(false);
+                  setShowSettingsPage(false);
+                  setShowChecklistSettingsPage(false);
+                  setShowEmployeeStatsPage(false);
+                }}
+              >
+                내 글 보기
+              </button>
               <button
                 className="profile-button"
                 type="button"

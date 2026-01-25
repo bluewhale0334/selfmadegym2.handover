@@ -92,7 +92,11 @@ function DashboardInContent({
     sourceInitRef.current = {};
 
     const unsubscribes = COMMENT_SOURCES.map((source) => {
-      const q = query(collection(db, source.collection));
+      const baseRef = collection(db, source.collection);
+      const q =
+        source.collection === "checklists"
+          ? query(baseRef, where("userId", "==", user.uid))
+          : query(baseRef);
       return onSnapshot(
         q,
         (snapshot) => {
