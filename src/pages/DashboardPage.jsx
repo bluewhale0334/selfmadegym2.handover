@@ -1,7 +1,18 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { signOut, signInWithEmailAndPassword } from "firebase/auth";
-import { doc, collection, query, where, orderBy, onSnapshot, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
+import {
+  doc,
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  addDoc,
+  getDocs,
+  serverTimestamp,
+} from "firebase/firestore";
 import { auth, db } from "../firebase";
+import { trainerRecruitDb } from "../firebaseTrainerRecruit";
 import DatePicker from "./categories/DatePicker";
 import "./DashboardPage.css";
 import DashboardContent from "./categories/DashboardContent";
@@ -16,6 +27,7 @@ import ChecklistSettingsPage from "./ChecklistSettingsPage";
 import EmployeeStatsPage from "./EmployeeStatsPage";
 import MyPostsPage from "./MyPostsPage";
 import SearchPage from "./SearchPage";
+import TrainerToRecruitPage from "./TrainerToRecruitPage";
 
 function DashboardPage({ user, onShowAuthPage }) {
   const [profile, setProfile] = useState(null);
@@ -54,8 +66,11 @@ function DashboardPage({ user, onShowAuthPage }) {
   const [showEmployeeStatsPage, setShowEmployeeStatsPage] = useState(false);
   const [showMyPostsPage, setShowMyPostsPage] = useState(false);
   const [showSearchPage, setShowSearchPage] = useState(false);
+  const [showTrainerToRecruitPage, setShowTrainerToRecruitPage] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [submittedSearchKeyword, setSubmittedSearchKeyword] = useState("");
+  const [unreadCategoryFlags, setUnreadCategoryFlags] = useState({});
+  const [hasNewApplicants, setHasNewApplicants] = useState(false);
 
   const tagColors = useMemo(
     () => ({
@@ -751,6 +766,16 @@ App.jsx
     []
   );
 
+  const newBadgeTargets = useMemo(
+    () => [
+      { label: "전체 공지", collection: "notices" },
+      { label: "업무 지시", collection: "instructions" },
+      { label: "일일 인수인계", collection: "handovers" },
+      { label: "업무 완료사항", collection: "progresses" },
+    ],
+    []
+  );
+
   const [dateLists, setDateLists] = useState({
     "업무 지시": [],
     "일일 인수인계": [],
@@ -821,6 +846,87 @@ App.jsx
     };
   }, [user, globalRefreshKey]); // globalRefreshKey 추가
 
+  useEffect(() => {
+    if (!user) {
+      setUnreadCategoryFlags({});
+      return;
+    }
+
+    let isMounted = true;
+
+    const fetchUnreadFlags = async () => {
+      const nextFlags = {};
+
+      await Promise.all(
+        newBadgeTargets.map(async (target) => {
+          try {
+            const q = query(
+              collection(db, target.collection),
+              orderBy("createdAt", "desc")
+            );
+            const snapshot = await getDocs(q);
+            let hasUnread = false;
+
+            snapshot.forEach((docSnapshot) => {
+              if (hasUnread) return;
+              const data = docSnapshot.data();
+              if (data.authorId === user.uid) return;
+              const readBy = data.readBy || [];
+              const hasRead = readBy.some((reader) => reader.userId === user.uid);
+              if (!hasRead) {
+                hasUnread = true;
+              }
+            });
+
+            nextFlags[target.label] = hasUnread;
+          } catch (error) {
+            console.error(`Error fetching unread flag for ${target.label}:`, error);
+            nextFlags[target.label] = false;
+          }
+        })
+      );
+
+      if (isMounted) {
+        setUnreadCategoryFlags(nextFlags);
+      }
+    };
+
+    fetchUnreadFlags();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, globalRefreshKey, newBadgeTargets]);
+
+  useEffect(() => {
+    if (profile?.user_type !== "admin") {
+      setHasNewApplicants(false);
+      return;
+    }
+
+    let isFirstSnapshot = true;
+    const unsubscribe = onSnapshot(
+      collection(trainerRecruitDb, "applications"),
+      (snapshot) => {
+        if (isFirstSnapshot) {
+          isFirstSnapshot = false;
+          return;
+        }
+        const hasAdded = snapshot
+          .docChanges()
+          .some((change) => change.type === "added");
+        if (hasAdded) {
+          setHasNewApplicants(true);
+        }
+      },
+      (error) => {
+        console.error("Error watching trainer recruit applications:", error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [profile?.user_type]);
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const month = date.getMonth() + 1;
@@ -889,6 +995,7 @@ App.jsx
     setShowEmployeeStatsPage(false);
     setShowMyPostsPage(false);
     setShowSearchPage(false);
+    setShowTrainerToRecruitPage(false);
   };
 
   const openSearchPage = () => {
@@ -899,6 +1006,7 @@ App.jsx
     setShowChecklistSettingsPage(false);
     setShowEmployeeStatsPage(false);
     setShowMyPostsPage(false);
+    setShowTrainerToRecruitPage(false);
   };
 
   const handleCategoryClick = (categoryLabel) => {
@@ -1352,6 +1460,26 @@ App.jsx
         <div className="dashboard-actions">
           {user ? (
             <>
+              {profile?.user_type === "admin" && (
+                <button
+                  type="button"
+                  className="dashboard-admin-bell-button"
+                  aria-label="관리자 알림"
+                  onClick={() => {
+                    setShowTrainerToRecruitPage(true);
+                    setShowMyPostsPage(false);
+                    setShowProfilePage(false);
+                    setShowSettingsPage(false);
+                    setShowChecklistSettingsPage(false);
+                    setShowEmployeeStatsPage(false);
+                    setShowSearchPage(false);
+                    setHasNewApplicants(false);
+                  }}
+                >
+                  🔔
+                  {hasNewApplicants && <span className="dashboard-admin-bell-badge" />}
+                </button>
+              )}
               <button
                 type="button"
                 className="dashboard-my-posts-button"
@@ -1506,6 +1634,9 @@ App.jsx
                       onClick={() => handleCategoryClick(category.label)}
                     >
                       <span>{category.label}</span>
+                      {unreadCategoryFlags[category.label] && (
+                        <span className="nav-item-new">new!</span>
+                      )}
                     </button>
                     <div className="nav-item-right">
                       {(hasDates || isNotice) && (
@@ -1667,6 +1798,8 @@ App.jsx
                 profile={profile}
                 onClose={() => setShowMyPostsPage(false)}
               />
+            ) : showTrainerToRecruitPage ? (
+              <TrainerToRecruitPage onClose={() => setShowTrainerToRecruitPage(false)} />
             ) : (
               renderContent()
             )}

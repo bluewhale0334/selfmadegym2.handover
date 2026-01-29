@@ -12,6 +12,32 @@ const formatToday = () => {
   return `${year}-${month}-${day}`;
 };
 
+const getTenureMonths = (createdAt) => {
+  if (!createdAt) return null;
+  const joinDate = createdAt?.toDate ? createdAt.toDate() : createdAt;
+  if (!(joinDate instanceof Date) || Number.isNaN(joinDate.getTime())) {
+    return null;
+  }
+  const now = new Date();
+  let months =
+    (now.getFullYear() - joinDate.getFullYear()) * 12 +
+    (now.getMonth() - joinDate.getMonth());
+  if (now.getDate() < joinDate.getDate()) {
+    months -= 1;
+  }
+  return Math.max(0, months) + 1;
+};
+
+const formatWorkTime = (workTime) => {
+  const weekdays = Array.isArray(workTime?.weekdays) ? workTime.weekdays : [];
+  const weekdaysText = weekdays.length > 0 ? weekdays.join(",") : "미설정";
+  const startTime = workTime?.startTime ? `${workTime.startTime}` : "";
+  const endTime = workTime?.endTime ? `${workTime.endTime}` : "";
+  const timeText =
+    startTime && endTime ? `${startTime}~${endTime}시` : "미설정";
+  return `${weekdaysText} / ${timeText}`;
+};
+
 function EmployeeStatsPage({ profile, onClose }) {
   const [checklistStats, setChecklistStats] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -36,6 +62,7 @@ function EmployeeStatsPage({ profile, onClose }) {
             id: docSnap.id,
             name: data.name || "사용자",
             role: data.role || "",
+            createdAt: data.createdAt || null,
             workTime: data.workTime || {},
           });
         });
@@ -85,6 +112,8 @@ function EmployeeStatsPage({ profile, onClose }) {
               percent,
               totalCount,
               doneCount,
+              createdAt: user.createdAt,
+              workTime: user.workTime,
             };
           })
         );
@@ -143,20 +172,62 @@ function EmployeeStatsPage({ profile, onClose }) {
                       .slice((currentPage - 1) * pageSize, currentPage * pageSize)
                       .map((stat) => (
                         <div key={stat.id} className="employee-stats-card-item">
-                          <div className="employee-stats-card-title">
-                            {stat.name}
-                            {stat.role ? ` (${stat.role})` : ""}
+                          <div className="employee-stats-card-title-row">
+                            <div className="employee-stats-card-title">
+                              {stat.name}
+                              {stat.role ? ` (${stat.role})` : ""}
+                            </div>
                           </div>
-                          <div
-                            className="employee-stats-card-progress"
-                            style={{ "--progress": `${stat.percent}%` }}
-                          >
-                            <span className="employee-stats-card-percent">
-                              {stat.percent}%
-                            </span>
-                          </div>
-                          <div className="employee-stats-card-sub">
-                            {stat.doneCount}/{stat.totalCount}
+                          <div className="employee-stats-card-body">
+                            <div className="employee-stats-card-chart">
+                              <div
+                                className="employee-stats-card-progress"
+                                style={{ "--progress": `${stat.percent}%` }}
+                              >
+                                <span className="employee-stats-card-percent">
+                                  {stat.percent}%
+                                </span>
+                              </div>
+                              <div className="employee-stats-card-sub">
+                                {stat.doneCount}/{stat.totalCount}
+                              </div>
+                            </div>
+                            <div className="employee-stats-card-info">
+                              <div className="employee-stats-card-info-item">
+                                <span className="employee-stats-card-info-label">
+                                  근무 기간
+                                </span>
+                                <span className="employee-stats-card-info-value">
+                                  {getTenureMonths(stat.createdAt)
+                                    ? `${getTenureMonths(stat.createdAt)}개월째 근무`
+                                    : "근무기간 미설정"}
+                                </span>
+                              </div>
+                              <div className="employee-stats-card-info-item">
+                                <span className="employee-stats-card-info-label">
+                                  근무 타임
+                                </span>
+                                <span className="employee-stats-card-info-value">
+                                  {formatWorkTime(stat.workTime)}
+                                </span>
+                              </div>
+                              <div className="employee-stats-card-info-item">
+                                <span className="employee-stats-card-info-label">
+                                  출근 일수
+                                </span>
+                                <span className="employee-stats-card-info-value">
+                                  준비중
+                                </span>
+                              </div>
+                              <div className="employee-stats-card-info-item">
+                                <span className="employee-stats-card-info-label">
+                                  이번달 예상급여
+                                </span>
+                                <span className="employee-stats-card-info-value">
+                                  준비중
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       ))}

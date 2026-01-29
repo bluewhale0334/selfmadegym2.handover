@@ -52,6 +52,13 @@
   align-items: center;
 }
 
+.nav-item-new {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #e4574f;
+}
+
 .nav-item-right {
   display: flex;
   align-items: center;
@@ -309,6 +316,33 @@
 
 .dashboard-my-posts-button:hover {
   background: rgba(255, 255, 255, 0.8);
+}
+
+.dashboard-admin-bell-button {
+  border: 1px solid var(--border);
+  background: #fffdfb;
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.dashboard-admin-bell-button:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.dashboard-admin-bell-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  background: #e4574f;
+  border-radius: 50%;
 }
 
 .dashboard-actions {
