@@ -46,6 +46,16 @@ const getTagColor = (tagColor) => {
     brown: "#c29a7f",
     gray: "#b0b3b8",
     black: "#2b2b2b",
+    "red-orange": "linear-gradient(90deg, #e4574f 0 50%, #f2a65a 50% 100%)",
+    "orange-yellow": "linear-gradient(90deg, #f2a65a 0 50%, #f7d36f 50% 100%)",
+    "yellow-green": "linear-gradient(90deg, #f7d36f 0 50%, #7fc8a9 50% 100%)",
+    "green-blue": "linear-gradient(90deg, #7fc8a9 0 50%, #6baed6 50% 100%)",
+    "blue-purple": "linear-gradient(90deg, #6baed6 0 50%, #b58fd6 50% 100%)",
+    "purple-pink": "linear-gradient(90deg, #b58fd6 0 50%, #f3a6c8 50% 100%)",
+    "pink-brown": "linear-gradient(90deg, #f3a6c8 0 50%, #c29a7f 50% 100%)",
+    "brown-gray": "linear-gradient(90deg, #c29a7f 0 50%, #b0b3b8 50% 100%)",
+    "gray-black": "linear-gradient(90deg, #b0b3b8 0 50%, #2b2b2b 50% 100%)",
+    "black-red": "linear-gradient(90deg, #2b2b2b 0 50%, #e4574f 50% 100%)",
   };
   return colors[tagColor] || "#b0b3b8";
 };
@@ -231,7 +241,7 @@ function SharedCategoryContent({
                       className="card-tag"
                       data-color={card.tagColor}
                       style={{
-                        backgroundColor: getTagColor(card.tagColor),
+                        background: getTagColor(card.tagColor),
                       }}
                       aria-hidden="true"
                     />

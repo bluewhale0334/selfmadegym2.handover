@@ -30,6 +30,16 @@ function SettingsPage({ user, profile, onClose }) {
       brown: "#c29a7f",
       gray: "#b0b3b8",
       black: "#2b2b2b",
+      "red-orange": "linear-gradient(90deg, #e4574f 0 50%, #f2a65a 50% 100%)",
+      "orange-yellow": "linear-gradient(90deg, #f2a65a 0 50%, #f7d36f 50% 100%)",
+      "yellow-green": "linear-gradient(90deg, #f7d36f 0 50%, #7fc8a9 50% 100%)",
+      "green-blue": "linear-gradient(90deg, #7fc8a9 0 50%, #6baed6 50% 100%)",
+      "blue-purple": "linear-gradient(90deg, #6baed6 0 50%, #b58fd6 50% 100%)",
+      "purple-pink": "linear-gradient(90deg, #b58fd6 0 50%, #f3a6c8 50% 100%)",
+      "pink-brown": "linear-gradient(90deg, #f3a6c8 0 50%, #c29a7f 50% 100%)",
+      "brown-gray": "linear-gradient(90deg, #c29a7f 0 50%, #b0b3b8 50% 100%)",
+      "gray-black": "linear-gradient(90deg, #b0b3b8 0 50%, #2b2b2b 50% 100%)",
+      "black-red": "linear-gradient(90deg, #2b2b2b 0 50%, #e4574f 50% 100%)",
     }),
     []
   );
@@ -46,6 +56,56 @@ function SettingsPage({ user, profile, onClose }) {
       { value: "brown", label: "갈색", color: "#c29a7f" },
       { value: "gray", label: "회색", color: "#b0b3b8" },
       { value: "black", label: "검정", color: "#2b2b2b" },
+      {
+        value: "red-orange",
+        label: "빨강/주황",
+        color: "linear-gradient(90deg, #e4574f 0 50%, #f2a65a 50% 100%)",
+      },
+      {
+        value: "orange-yellow",
+        label: "주황/노랑",
+        color: "linear-gradient(90deg, #f2a65a 0 50%, #f7d36f 50% 100%)",
+      },
+      {
+        value: "yellow-green",
+        label: "노랑/초록",
+        color: "linear-gradient(90deg, #f7d36f 0 50%, #7fc8a9 50% 100%)",
+      },
+      {
+        value: "green-blue",
+        label: "초록/파랑",
+        color: "linear-gradient(90deg, #7fc8a9 0 50%, #6baed6 50% 100%)",
+      },
+      {
+        value: "blue-purple",
+        label: "파랑/보라",
+        color: "linear-gradient(90deg, #6baed6 0 50%, #b58fd6 50% 100%)",
+      },
+      {
+        value: "purple-pink",
+        label: "보라/분홍",
+        color: "linear-gradient(90deg, #b58fd6 0 50%, #f3a6c8 50% 100%)",
+      },
+      {
+        value: "pink-brown",
+        label: "분홍/갈색",
+        color: "linear-gradient(90deg, #f3a6c8 0 50%, #c29a7f 50% 100%)",
+      },
+      {
+        value: "brown-gray",
+        label: "갈색/회색",
+        color: "linear-gradient(90deg, #c29a7f 0 50%, #b0b3b8 50% 100%)",
+      },
+      {
+        value: "gray-black",
+        label: "회색/검정",
+        color: "linear-gradient(90deg, #b0b3b8 0 50%, #2b2b2b 50% 100%)",
+      },
+      {
+        value: "black-red",
+        label: "검정/빨강",
+        color: "linear-gradient(90deg, #2b2b2b 0 50%, #e4574f 50% 100%)",
+      },
     ],
     []
   );
@@ -577,7 +637,7 @@ function SettingsPage({ user, profile, onClose }) {
                       <span
                         className="settings-user-dot"
                         style={{
-                          backgroundColor: tagColors[userItem.tagColor] ?? "#b0b3b8",
+                          background: tagColors[userItem.tagColor] ?? "#b0b3b8",
                         }}
                       />
                       <div className="settings-user-info">
@@ -613,7 +673,7 @@ function SettingsPage({ user, profile, onClose }) {
                       <span
                         className="settings-user-dot"
                         style={{
-                          backgroundColor: tagColors[userItem.tagColor] ?? "#b0b3b8",
+                          background: tagColors[userItem.tagColor] ?? "#b0b3b8",
                         }}
                       />
                       <div className="settings-user-info">
@@ -651,7 +711,7 @@ function SettingsPage({ user, profile, onClose }) {
                         <span
                           className="settings-user-dot"
                           style={{
-                            backgroundColor: tagColors[userItem.tagColor] ?? "#b0b3b8",
+                            background: tagColors[userItem.tagColor] ?? "#b0b3b8",
                           }}
                         />
                         <div className="settings-user-info">
@@ -748,7 +808,7 @@ function SettingsPage({ user, profile, onClose }) {
                         <span
                           className="settings-user-dot"
                           style={{
-                            backgroundColor: tagColors[userItem.tagColor] ?? "#b0b3b8",
+                            background: tagColors[userItem.tagColor] ?? "#b0b3b8",
                           }}
                         />
                         <div className="settings-user-info">
@@ -882,7 +942,7 @@ function SettingsPage({ user, profile, onClose }) {
                       >
                         <span
                           className="color-dot"
-                          style={{ backgroundColor: option.color }}
+                          style={{ background: option.color }}
                           aria-hidden="true"
                         />
                         {option.label}

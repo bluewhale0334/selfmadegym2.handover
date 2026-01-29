@@ -429,9 +429,10 @@
 
 .settings-modal-field .tag-overlay {
   position: absolute;
-  bottom: 0.25rem;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
+  width: 100%;
   font-size: 0.7rem;
   color: #666;
   background: white;
@@ -439,6 +440,7 @@
   border-radius: 4px;
   white-space: nowrap;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  text-align: center;
 }
 
 .settings-modal-actions {
