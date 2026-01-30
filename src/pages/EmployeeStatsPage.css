@@ -169,7 +169,7 @@
 
 .employee-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(275px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 16px;
   grid-auto-rows: minmax(200px, auto);
 }
@@ -232,7 +232,8 @@
   font-size: 12px;
   color: #4b3b2f;
   margin-left: auto;
-  min-width: 180px;
+  min-width: 160px;
+  flex: 1;
 }
 
 .employee-stats-card-info-item {
@@ -240,16 +241,21 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  white-space: nowrap;
 }
 
 .employee-stats-card-info-label {
   color: #6b5a4b;
-  min-width: 80px;
+  min-width: fit-content;
+  flex-shrink: 0;
 }
 
 .employee-stats-card-info-value {
   font-weight: 600;
   color: #3d2f24;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .employee-stats-card-percent {
