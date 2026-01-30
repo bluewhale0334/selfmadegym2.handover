@@ -186,7 +186,7 @@ export const calculateWeeklyAllowance = ({
         : weekWorkHours,
       maxAssumedHours
     );
-    const allowancePay = Math.floor((allowanceHours / 40) * hourlyWage);
+    const allowancePay = eligible ? Math.floor((allowanceHours / 40) * 8 * hourlyWage) : 0;
 
     let weekCarryoverHours = 0;
     if (isLastWeek && spillsToNextMonth && eligible && actualWorkdayCount < scheduledWeekdayCount) {

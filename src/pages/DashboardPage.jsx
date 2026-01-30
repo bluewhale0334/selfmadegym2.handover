@@ -102,6 +102,19 @@ function DashboardPage({ user, onShowAuthPage, onBeforeLogout }) {
   const updateNotes = useMemo(
     () => [
       {
+        version: "1.4.1",
+        content: `# handoverSM 1.4.1 - 변경사항
+
+## 주요 변경사항
+
+### 1. 주휴수당 계산 공식 고도화
+- 법정 주휴수당 공식 반영: (상정시간/40)*8*시급
+- 예상 급여 상세 항목에 주휴수당 실지급액 표시
+
+### 2. 예상 급여 합계 정교화
+- 시급 총액 + 주휴수당 총액 합산 표시`,
+      },
+      {
         version: "1.4.0",
         content: `# handoverSM 1.4.0 - 변경사항
 
@@ -707,10 +720,10 @@ App.jsx
     ],
     []
   );
-  const [expandedUpdateVersions, setExpandedUpdateVersions] = useState(() => new Set(["1.4.0"]));
+  const [expandedUpdateVersions, setExpandedUpdateVersions] = useState(() => new Set(["1.4.1"]));
   const currentVersionInfo = useMemo(
     () => `## 버전 정보
-- **버전**: 1.4.0
+- **버전**: 1.4.1
 - **프로젝트명**: handoverSM
 - **개발 환경**: React + Vite + Firebase`,
     []

@@ -248,7 +248,7 @@ function WorkStatusPage({ user, profile }) {
 
   const hourlyWage = Number(workTime.hourlyWage || 0);
   const totalWage = Math.floor(totalWorkHours * hourlyWage);
-  const showWeeklyBonus = assumedHours >= 15;
+
   const firstSundayDay = useMemo(() => {
     const firstOfMonth = new Date(year, month - 1, 1);
     const diff = (7 - firstOfMonth.getDay()) % 7;
@@ -393,6 +393,17 @@ function WorkStatusPage({ user, profile }) {
       carryoverFromPrev,
     });
   }, [activeProfile, attendanceByDate, holidayTags, hourlyWage, carryoverFromPrev, isAdmin, selectedUserId, year, month]);
+
+  const totalWeeklyAllowance = useMemo(() => {
+    if (!weeklyAllowance) return 0;
+    return weeklyAllowance.weeklyResults.reduce((sum, result) => {
+      // 이월(next month carryover) 되는 주차는 이번 달 합계에서 제외
+      if (result.carryoverHours > 0) return sum;
+      return sum + (result.allowancePay || 0);
+    }, 0);
+  }, [weeklyAllowance]);
+
+  const showWeeklyBonus = assumedHours >= 15;
   const weeklyLabelByDate = useMemo(() => {
     if (!weeklyAllowance || !showWeeklyBonus) return {};
     const map = {};
@@ -885,7 +896,7 @@ function WorkStatusPage({ user, profile }) {
                 {showWeeklyBonus && (
                   <div className="work-status-salary-row">
                     <span>주휴수당</span>
-                    <span>준비중</span>
+                    <span>{totalWeeklyAllowance.toLocaleString()}원</span>
                   </div>
                 )}
               </div>
@@ -893,7 +904,7 @@ function WorkStatusPage({ user, profile }) {
               <div className="work-status-salary-divider" />
               <div className="work-status-salary-total">
                 <span>예상 급여</span>
-                <span>{totalWage.toLocaleString()}원</span>
+                <span>{(totalWage + totalWeeklyAllowance).toLocaleString()}원</span>
               </div>
             </div>
           </div>
