@@ -102,6 +102,23 @@ function DashboardPage({ user, onShowAuthPage, onBeforeLogout }) {
   const updateNotes = useMemo(
     () => [
       {
+        version: "1.4.2",
+        content: `# handoverSM 1.4.2 - 변경사항
+
+## 주요 변경사항
+
+### 1. 직원 급여 현황 대시보드
+- 통계 페이지 내 급여 상세 테이블 추가
+- 총 급여 순 정렬 및 엑셀 스타일 뷰 구현
+
+### 2. 인수인계 기능 안정화
+- 계정 전환 시 발생하는 권한 오류 수정
+- 일시적 통신 장애 시 세션 유지 강화
+
+### 3. UI 일관성 개선
+- 월별 내비게이션 바 컴포넌트화 및 디자인 통일`,
+      },
+      {
         version: "1.4.1",
         content: `# handoverSM 1.4.1 - 변경사항
 
@@ -720,10 +737,10 @@ App.jsx
     ],
     []
   );
-  const [expandedUpdateVersions, setExpandedUpdateVersions] = useState(() => new Set(["1.4.1"]));
+  const [expandedUpdateVersions, setExpandedUpdateVersions] = useState(() => new Set(["1.4.2"]));
   const currentVersionInfo = useMemo(
     () => `## 버전 정보
-- **버전**: 1.4.1
+- **버전**: 1.4.2
 - **프로젝트명**: handoverSM
 - **개발 환경**: React + Vite + Firebase`,
     []

@@ -22,7 +22,7 @@ const getDailyAssumedHours = (workTime) => {
   return Math.max(0, durationHours - 1);
 };
 
-const getNetWorkHoursValue = (startTime, endTime, weekdayIndex) => {
+export const getNetWorkHoursValue = (startTime, endTime, weekdayIndex) => {
   if (!startTime || !endTime) return 0;
   const startMinutes = parseTimeToMinutes(startTime);
   const endMinutes = parseTimeToMinutes(endTime);

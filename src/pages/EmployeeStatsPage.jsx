@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import EmployeeStatsPagination from "./EmployeeStatsPagination";
+import StatsMonthNavigation from "./StatsMonthNavigation";
+import { calculateWeeklyAllowance, getNetWorkHoursValue } from "./workStatus/weeklyAllowance";
 import "./EmployeeStatsPage.css";
 
 const formatToday = () => {
@@ -47,44 +49,57 @@ const formatWorkTime = (workTime) => {
     : `${weekdaysText} / ${timeText}`;
 };
 
-const getNetWorkHoursValue = (timeRange, weekdayIndex) => {
-  if (!timeRange) return 0;
-  const [start, end] = timeRange.split("-");
-  if (!start || !end) return 0;
-  const [startHour, startMinute = "0"] = start.split(":");
-  const [endHour, endMinute = "0"] = end.split(":");
-  const startTotal = Number(startHour) * 60 + Number(startMinute);
-  const endTotal = Number(endHour) * 60 + Number(endMinute);
-  if (!Number.isFinite(startTotal) || !Number.isFinite(endTotal)) return 0;
-
-  let durationMinutes = endTotal - startTotal;
-  if (durationMinutes <= 0) {
-    durationMinutes += 24 * 60;
-  }
-
-  let breakMinutes = 0;
-  if (weekdayIndex >= 1 && weekdayIndex <= 5) {
-    if (durationMinutes >= 9 * 60) {
-      breakMinutes = 60;
-    }
-  }
-
-  const netMinutes = Math.max(0, durationMinutes - breakMinutes);
-  return netMinutes / 60;
-};
-
 function EmployeeStatsPage({ profile, onClose }) {
+  const todayDate = useMemo(() => new Date(), []);
+  const [viewDate, setViewDate] = useState(
+    () => new Date(todayDate.getFullYear(), todayDate.getMonth(), 1)
+  );
+  const [activeTab, setActiveTab] = useState("checklist"); // 'checklist' | 'salary'
   const [checklistStats, setChecklistStats] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const today = useMemo(() => formatToday(), []);
+  const [holidayTags, setHolidayTags] = useState({});
   const pageSize = 9;
+
+  const { viewYear, viewMonth } = useMemo(() => ({
+    viewYear: viewDate.getFullYear(),
+    viewMonth: viewDate.getMonth() + 1,
+  }), [viewDate]);
+
+  const handlePrevMonth = () => {
+    setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
+  const todayStr = useMemo(() => {
+    const y = todayDate.getFullYear();
+    const m = String(todayDate.getMonth() + 1).padStart(2, "0");
+    const d = String(todayDate.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, [todayDate]);
+
+  // 공휴일 정보 로드
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "workDayTags"), (snapshot) => {
+      const map = {};
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data?.date && data?.type) map[data.date] = data.type;
+      });
+      setHolidayTags(map);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (profile?.user_type !== "admin") return;
     const fetchStats = async () => {
       setIsLoading(true);
+      setChecklistStats([]);
       setStatus("");
       try {
         const usersSnapshot = await getDocs(
@@ -104,8 +119,9 @@ function EmployeeStatsPage({ profile, onClose }) {
 
         const now = new Date();
         const nowMinutes = now.getHours() * 60 + now.getMinutes();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth() + 1;
+
+        const prevMonth = viewMonth === 1 ? 12 : viewMonth - 1;
+        const prevYear = viewMonth === 1 ? viewYear - 1 : viewYear;
 
         const stats = await Promise.all(
           users.map(async (user) => {
@@ -116,7 +132,10 @@ function EmployeeStatsPage({ profile, onClose }) {
               : endHour === 0
               ? 24 * 60
               : endHour * 60;
-            const includeToday = endMinutes === null ? true : nowMinutes >= endMinutes;
+            
+            // 조회 중인 달이 현재 달인 경우에만 오늘 업무 포함 여부 판단
+            const isCurrentMonth = viewYear === now.getFullYear() && viewMonth === (now.getMonth() + 1);
+            const includeToday = !isCurrentMonth || (endMinutes === null ? true : nowMinutes >= endMinutes);
 
             const snapshots = await getDocs(
               query(
@@ -129,8 +148,11 @@ function EmployeeStatsPage({ profile, onClose }) {
             snapshots.forEach((snapDoc) => {
               const data = snapDoc.data();
               if (!data.date) return;
-              if (data.date > today) return;
-              if (data.date === today && !includeToday) return;
+              const [snapY, snapM] = data.date.split("-").map(Number);
+              if (snapY !== viewYear || snapM !== viewMonth) return;
+              if (data.date > todayStr) return;
+              if (data.date === todayStr && !includeToday) return;
+              
               const items = Array.isArray(data.items) ? data.items : [];
               const extraItems = Array.isArray(data.extraItems) ? data.extraItems : [];
               const dailyItems = items.filter(
@@ -142,12 +164,14 @@ function EmployeeStatsPage({ profile, onClose }) {
                 extraItems.filter((item) => item.done).length;
             });
             const percent = totalCount === 0 ? 0 : Math.round((doneCount / totalCount) * 100);
+            
             const attendanceSnapshot = await getDocs(
               query(
                 collection(db, "workAttendance"),
                 where("userId", "==", user.id)
               )
             );
+            
             const recordByDate = {};
             attendanceSnapshot.forEach((recordDoc) => {
               const data = recordDoc.data();
@@ -157,27 +181,54 @@ function EmployeeStatsPage({ profile, onClose }) {
                 recordByDate[data.date] = data;
               }
             });
+
+            const hourlyWage = Number(user.workTime?.hourlyWage || 0);
+
             const monthRecords = Object.values(recordByDate).filter((record) => {
-              const [recordYear, recordMonth] = String(record.date)
-                .split("-")
-                .map(Number);
-              return recordYear === currentYear && recordMonth === currentMonth;
+              const [recordYear, recordMonth] = String(record.date).split("-").map(Number);
+              return recordYear === viewYear && recordMonth === viewMonth;
             });
+
             const totalWorkDays = monthRecords.filter(
               (record) => record.startTime && record.endTime
             ).length;
+
             const totalWorkHours = monthRecords.reduce((sum, record) => {
               if (!record.startTime || !record.endTime) return sum;
-              const [yearPart, monthPart, dayPart] = String(record.date)
-                .split("-")
-                .map(Number);
-              if (!yearPart || !monthPart || !dayPart) return sum;
-              const weekdayIndex = new Date(yearPart, monthPart - 1, dayPart).getDay();
-              const timeRange = `${record.startTime}-${record.endTime}`;
-              return sum + getNetWorkHoursValue(timeRange, weekdayIndex);
+              const [y, m, d] = String(record.date).split("-").map(Number);
+              const weekdayIndex = new Date(y, m - 1, d).getDay();
+              return sum + getNetWorkHoursValue(record.startTime, record.endTime, weekdayIndex);
             }, 0);
-            const hourlyWage = Number(user.workTime?.hourlyWage || 0);
-            const monthlyWage = Math.floor(totalWorkHours * hourlyWage);
+
+            const baseWage = Math.floor(totalWorkHours * hourlyWage);
+
+            const prevResult = calculateWeeklyAllowance({
+              year: prevYear,
+              month: prevMonth,
+              workTime: user.workTime,
+              recordsByDate: recordByDate,
+              holidayTags,
+              hourlyWage,
+            });
+            const carryoverFromPrev = prevResult.carryoverHours || 0;
+
+            const weeklyAllowanceResult = calculateWeeklyAllowance({
+              year: viewYear,
+              month: viewMonth,
+              workTime: user.workTime,
+              recordsByDate: recordByDate,
+              holidayTags,
+              hourlyWage,
+              carryoverFromPrev,
+            });
+
+            const totalWeeklyBonus = (weeklyAllowanceResult.weeklyResults || []).reduce((sum, result) => {
+              if (result.carryoverHours > 0) return sum;
+              return sum + (result.allowancePay || 0);
+            }, 0);
+
+            const monthlyWage = baseWage + totalWeeklyBonus;
+
             return {
               id: user.id,
               name: user.name,
@@ -188,13 +239,22 @@ function EmployeeStatsPage({ profile, onClose }) {
               createdAt: user.createdAt,
               workTime: user.workTime,
               monthlyWage,
+              baseWage,
+              totalWeeklyBonus,
+              totalWorkHours,
               hourlyWage,
-            totalWorkDays,
+              totalWorkDays,
             };
           })
         );
 
-        const sorted = stats.sort((a, b) => b.percent - a.percent);
+        const sorted = stats.sort((a, b) => {
+          if (activeTab === "salary") {
+            return b.monthlyWage - a.monthlyWage;
+          }
+          return b.percent - a.percent;
+        });
+
         setChecklistStats(sorted);
         setCurrentPage(1);
       } catch (error) {
@@ -206,7 +266,7 @@ function EmployeeStatsPage({ profile, onClose }) {
     };
 
     fetchStats();
-  }, [profile?.user_type, today]);
+  }, [profile?.user_type, viewYear, viewMonth, todayStr, holidayTags, activeTab]);
 
   if (profile?.user_type !== "admin") {
     return (
@@ -222,7 +282,15 @@ function EmployeeStatsPage({ profile, onClose }) {
     <div className="employee-stats-page">
       <div className="employee-stats-card">
         <div className="employee-stats-header">
-          <h2>직원 통계</h2>
+          <div className="employee-stats-title-group">
+            <h2>직원 통계</h2>
+            <StatsMonthNavigation
+              viewYear={viewYear}
+              viewMonth={viewMonth}
+              onPrevMonth={handlePrevMonth}
+              onNextMonth={handleNextMonth}
+            />
+          </div>
           {onClose && (
             <button type="button" className="employee-stats-close" onClick={onClose}>
               닫기
@@ -232,8 +300,19 @@ function EmployeeStatsPage({ profile, onClose }) {
         <div className="employee-stats-body">
           <div className="employee-stats-layout">
             <div className="employee-stats-categories">
-              <button type="button" className="employee-stats-category-item active">
+              <button
+                type="button"
+                className={`employee-stats-category-item${activeTab === "checklist" ? " active" : ""}`}
+                onClick={() => setActiveTab("checklist")}
+              >
                 체크리스트 실행률
+              </button>
+              <button
+                type="button"
+                className={`employee-stats-category-item${activeTab === "salary" ? " active" : ""}`}
+                onClick={() => setActiveTab("salary")}
+              >
+                직원 급여 현황
               </button>
             </div>
             <div className="employee-stats-content">
@@ -241,6 +320,55 @@ function EmployeeStatsPage({ profile, onClose }) {
                 <p>불러오는 중...</p>
               ) : status ? (
                 <p>{status}</p>
+              ) : activeTab === "salary" ? (
+                <div className="employee-stats-salary-content">
+                  <div className="employee-stats-salary-table-wrapper">
+                    <table className="employee-stats-salary-table">
+                      <thead>
+                        <tr>
+                          <th>이름(직책)</th>
+                          <th>근무일수</th>
+                          <th>근무시간</th>
+                          <th>시급</th>
+                          <th>주휴수당</th>
+                          <th>총급여</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {checklistStats
+                          .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                          .map((stat) => (
+                            <tr key={stat.id}>
+                              <td className="stat-name-cell">
+                                {stat.name}
+                                {stat.role ? ` (${stat.role})` : ""}
+                              </td>
+                              <td>{stat.totalWorkDays}일</td>
+                              <td>{stat.totalWorkHours.toFixed(1)}h</td>
+                              <td>{stat.hourlyWage.toLocaleString()}원</td>
+                              <td>{stat.totalWeeklyBonus.toLocaleString()}원</td>
+                              <td className="stat-total-cell">
+                                {stat.monthlyWage.toLocaleString()}원
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="employee-stats-footer-nav">
+                    <StatsMonthNavigation
+                      viewYear={viewYear}
+                      viewMonth={viewMonth}
+                      onPrevMonth={handlePrevMonth}
+                      onNextMonth={handleNextMonth}
+                    />
+                  </div>
+                  <EmployeeStatsPagination
+                    currentPage={currentPage}
+                    totalPages={Math.ceil(checklistStats.length / pageSize)}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
               ) : (
                 <>
                   <div className="employee-stats-grid">
@@ -309,6 +437,14 @@ function EmployeeStatsPage({ profile, onClose }) {
                           </div>
                         </div>
                       ))}
+                  </div>
+                  <div className="employee-stats-footer-nav">
+                    <StatsMonthNavigation
+                      viewYear={viewYear}
+                      viewMonth={viewMonth}
+                      onPrevMonth={handlePrevMonth}
+                      onNextMonth={handleNextMonth}
+                    />
                   </div>
                   <EmployeeStatsPagination
                     currentPage={currentPage}

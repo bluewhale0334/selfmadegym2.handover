@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { calculateWeeklyAllowance } from "./workStatus/weeklyAllowance";
+import StatsMonthNavigation from "./StatsMonthNavigation";
 import "./WorkStatusPage.css";
 
 function WorkStatusPage({ user, profile }) {
@@ -719,152 +720,145 @@ function WorkStatusPage({ user, profile }) {
       <div className="work-status-header">
         <div className="work-status-title">
           <h2>근무 현황</h2>
-          <div className="work-status-month-nav">
-            <button type="button" className="work-status-nav" onClick={handlePrevMonth}>
-              이전
-            </button>
-            <div className="work-status-month-wrapper">
-              <button
-                type="button"
-                className="work-status-month"
-                onClick={handleOpenPicker}
-              >
-                {year}년 {month}월
-              </button>
-              {isPickerOpen && (
-                <div className="work-status-picker">
-                  <button
-                    type="button"
-                    className="work-status-picker-year"
-                    onClick={() => setIsYearListOpen((prev) => !prev)}
+          <StatsMonthNavigation
+            viewYear={year}
+            viewMonth={month}
+            onPrevMonth={handlePrevMonth}
+            onNextMonth={handleNextMonth}
+            onClickMonth={handleOpenPicker}
+            extra={
+              isAdmin ? (
+                <div className="work-status-user-select">
+                  <span>사용자 선택</span>
+                  <select
+                    value={selectedUserId}
+                    onChange={(event) => setSelectedUserId(event.target.value)}
                   >
-                    {year}년
-                  </button>
-                  {isYearListOpen ? (
-                    <div className="work-status-year-list">
-                      {yearOptions.map((yearValue) => (
+                    <option value="">선택</option>
+                    {customerUsers.map((userItem) => (
+                      <option key={userItem.id} value={userItem.id}>
+                        {userItem.name || "사용자"}
+                      </option>
+                    ))}
+                  </select>
+                  {user?.uid === "p2Y6M5CdDLMPm91d0RBBHs0uaXi1" && (
+                    <button
+                      type="button"
+                      className="work-status-apply-button"
+                      onClick={handleApplyMonthlySchedule}
+                      disabled={!selectedUserId || isApplyingSchedule}
+                    >
+                      {isApplyingSchedule ? "적용 중..." : "근무시간 전체 적용"}
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <div className="work-status-holiday-controls">
+                      {isHolidaySetting ? (
+                        <>
+                          <button
+                            type="button"
+                            className={`work-status-holiday-type${
+                              selectedHolidayType === "공휴일" ? " active" : ""
+                            }`}
+                            onClick={() => setSelectedHolidayType("공휴일")}
+                          >
+                            공휴일
+                          </button>
+                          <button
+                            type="button"
+                            className={`work-status-holiday-type${
+                              selectedHolidayType === "센터휴무" ? " active" : ""
+                            }`}
+                            onClick={() => setSelectedHolidayType("센터휴무")}
+                          >
+                            센터휴무
+                          </button>
+                          <button
+                            type="button"
+                            className="work-status-holiday-save"
+                            onClick={handleSaveHolidayTags}
+                          >
+                            저장
+                          </button>
+                        </>
+                      ) : (
                         <button
-                          key={yearValue}
                           type="button"
-                          className={[
-                            "work-status-year-item",
-                            yearValue === year ? "active" : "",
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                          onClick={() => handleSelectYear(yearValue)}
+                          className="work-status-holiday-open"
+                          onClick={() => {
+                            setIsHolidaySetting(true);
+                            setHolidayMessage("");
+                          }}
                         >
-                          {yearValue}
+                          쉬는 날 설정
                         </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="work-status-month-list">
-                      {Array.from({ length: 12 }, (_, index) => (
-                        <button
-                          key={index}
-                          type="button"
-                          className={[
-                            "work-status-month-item",
-                            index === currentDate.getMonth() ? "active" : "",
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                          onClick={() => handleSelectMonth(index)}
-                        >
-                          {index + 1}월
-                        </button>
-                      ))}
+                      )}
+                      {holidayMessage && (
+                        <span className="work-status-holiday-message">{holidayMessage}</span>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-            <button type="button" className="work-status-nav" onClick={handleNextMonth}>
-              다음
-            </button>
-            {isAdmin ? (
-              <div className="work-status-user-select">
-                <span>사용자 선택</span>
-                <select
-                  value={selectedUserId}
-                  onChange={(event) => setSelectedUserId(event.target.value)}
+              ) : (
+                <button
+                  type="button"
+                  className={`work-status-salary-button${showSalaryView ? " active" : ""}`}
+                  onClick={() => setShowSalaryView((prev) => !prev)}
                 >
-                  <option value="">선택</option>
-                  {customerUsers.map((userItem) => (
-                    <option key={userItem.id} value={userItem.id}>
-                      {userItem.name || "사용자"}
-                    </option>
-                  ))}
-                </select>
-                {user?.uid === "p2Y6M5CdDLMPm91d0RBBHs0uaXi1" && (
-                  <button
-                    type="button"
-                    className="work-status-apply-button"
-                    onClick={handleApplyMonthlySchedule}
-                    disabled={!selectedUserId || isApplyingSchedule}
-                  >
-                    {isApplyingSchedule ? "적용 중..." : "근무시간 전체 적용"}
-                  </button>
-                )}
-                {isAdmin && (
-                  <div className="work-status-holiday-controls">
-                    {isHolidaySetting ? (
-                      <>
-                        <button
-                          type="button"
-                          className={`work-status-holiday-type${
-                            selectedHolidayType === "공휴일" ? " active" : ""
-                          }`}
-                          onClick={() => setSelectedHolidayType("공휴일")}
-                        >
-                          공휴일
-                        </button>
-                        <button
-                          type="button"
-                          className={`work-status-holiday-type${
-                            selectedHolidayType === "센터휴무" ? " active" : ""
-                          }`}
-                          onClick={() => setSelectedHolidayType("센터휴무")}
-                        >
-                          센터휴무
-                        </button>
-                        <button
-                          type="button"
-                          className="work-status-holiday-save"
-                          onClick={handleSaveHolidayTags}
-                        >
-                          저장
-                        </button>
-                      </>
-                    ) : (
+                  {showSalaryView ? "닫기" : "예상 급여"}
+                </button>
+              )
+            }
+          >
+            {isPickerOpen && (
+              <div className="work-status-picker">
+                <button
+                  type="button"
+                  className="work-status-picker-year"
+                  onClick={() => setIsYearListOpen((prev) => !prev)}
+                >
+                  {year}년
+                </button>
+                {isYearListOpen ? (
+                  <div className="work-status-year-list">
+                    {yearOptions.map((yearValue) => (
                       <button
+                        key={yearValue}
                         type="button"
-                        className="work-status-holiday-open"
-                        onClick={() => {
-                          setIsHolidaySetting(true);
-                          setHolidayMessage("");
-                        }}
+                        className={[
+                          "work-status-year-item",
+                          yearValue === year ? "active" : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        onClick={() => handleSelectYear(yearValue)}
                       >
-                        쉬는 날 설정
+                        {yearValue}
                       </button>
-                    )}
-                    {holidayMessage && (
-                      <span className="work-status-holiday-message">{holidayMessage}</span>
-                    )}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="work-status-month-list">
+                    {Array.from({ length: 12 }, (_, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        className={[
+                          "work-status-month-item",
+                          index === currentDate.getMonth() ? "active" : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        onClick={() => handleSelectMonth(index)}
+                      >
+                        {index + 1}월
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
-            ) : (
-              <button
-                type="button"
-                className={`work-status-salary-button${showSalaryView ? " active" : ""}`}
-                onClick={() => setShowSalaryView((prev) => !prev)}
-              >
-                {showSalaryView ? "닫기" : "예상 급여"}
-              </button>
             )}
-          </div>
+          </StatsMonthNavigation>
         </div>
       </div>
       <div className="work-status-body">

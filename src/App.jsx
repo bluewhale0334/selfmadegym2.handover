@@ -204,7 +204,9 @@ function App() {
       if (currentUser) {
         // Firestore에서 사용자 정보 확인 (disabled 체크)
         try {
-          let userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          const userDocRef = doc(db, "users", currentUser.uid);
+          let userDoc = await getDoc(userDocRef);
+          
           if (!userDoc.exists()) {
             const pendingUid = sessionStorage.getItem("pendingUserDocUid");
             if (pendingUid === currentUser.uid) {
@@ -222,46 +224,67 @@ function App() {
               setIsLoading(false);
               return;
             }
-            const previousUser = lastUserRef.current;
+            
             const previousUserData = lastUserDataRef.current;
+            
+            // 인수인계(계정 전환) 시 이전 사용자의 로그아웃 기록 처리
             if (
               hasInitializedRef.current &&
-              previousUser &&
-              previousUser.uid !== currentUser.uid &&
-              previousUserData?.user_type === "customer"
+              previousUserData &&
+              previousUserData.id !== currentUser.uid &&
+              previousUserData.user_type === "customer"
             ) {
-              await recordLogout(previousUserData, new Date());
+              // ❗이 부분은 별도의 try-catch로 감싸서 권한 오류가 발생해도 로그인을 방해하지 않게 함
+              try {
+                await recordLogout(previousUserData, new Date());
+              } catch (logoutError) {
+                console.warn("Could not record logout for previous user (expected during handover):", logoutError);
+              }
             }
+            
             lastUserRef.current = currentUser;
             lastUserDataRef.current = {
               id: currentUser.uid,
               ...userData,
             };
+
+            // 새 사용자의 로그인 기록 처리
             if (hasInitializedRef.current && userData.user_type === "customer") {
-              await recordLogin(
-                {
-                  id: currentUser.uid,
-                  ...userData,
-                },
-                new Date()
-              );
+              try {
+                await recordLogin(
+                  {
+                    id: currentUser.uid,
+                    ...userData,
+                  },
+                  new Date()
+                );
+              } catch (loginError) {
+                console.warn("Could not record login for current user:", loginError);
+              }
             }
           } else {
-            // Firestore에 사용자 문서가 없으면 로그아웃
-            sessionStorage.removeItem("pendingUserDocUid");
-            console.log("User document not found in Firestore, signing out...");
-            await signOut(auth);
-            setUser(null);
-            setIsLoading(false);
-            return;
+            // Firestore에 사용자 문서가 없으면 로그아웃 (새 가입 대기 중이 아닐 때만)
+            if (!sessionStorage.getItem("pendingUserDocUid")) {
+              console.log("User document not found, signing out...");
+              await signOut(auth);
+              setUser(null);
+              setIsLoading(false);
+              return;
+            }
           }
         } catch (error) {
-          console.error("Error checking user status:", error);
-          // 에러 발생 시에도 안전을 위해 로그아웃
+          console.error("Error in onAuthStateChanged status check:", error);
+          // ❗중요: 인수인계 과정에서 발생하는 일시적인 권한 오류(B가 A의 문서를 보려 할 때 등)는 무시
+          if (error.code === "permission-denied") {
+            console.warn("Permission denied during auth transition - ignoring to maintain session.");
+            return;
+          }
+          
+          // 그 외의 심각한 에러는 안전을 위해 로그아웃
           try {
             await signOut(auth);
-          } catch (signOutError) {
-            console.error("Error signing out:", signOutError);
+          } catch (e) {
+            console.error("Sign out error:", e);
           }
           setUser(null);
           setIsLoading(false);
