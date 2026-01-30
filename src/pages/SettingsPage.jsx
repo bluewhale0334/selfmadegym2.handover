@@ -17,6 +17,8 @@ function SettingsPage({ user, profile, onClose }) {
   const [reservedColors, setReservedColors] = useState({});
   const [worktimeEdits, setWorktimeEdits] = useState({});
   const [savingWorktimeUserId, setSavingWorktimeUserId] = useState(null);
+  const [bulkHourlyWage, setBulkHourlyWage] = useState("");
+  const [isSavingBulkWage, setIsSavingBulkWage] = useState(false);
 
   const tagColors = useMemo(
     () => ({
@@ -170,8 +172,11 @@ function SettingsPage({ user, profile, onClose }) {
         const workTime = userItem.workTime || {};
         next[userItem.id] = {
           weekdays: Array.isArray(workTime.weekdays) ? workTime.weekdays : [],
-            startTime: normalizeHourValue(workTime.startTime),
-            endTime: normalizeHourValue(workTime.endTime),
+          startTime: normalizeHourValue(workTime.startTime),
+          endTime: normalizeHourValue(workTime.endTime),
+          sundayStartTime: normalizeHourValue(workTime.sundayStartTime),
+          sundayEndTime: normalizeHourValue(workTime.sundayEndTime),
+          hourlyWage: workTime.hourlyWage ?? "",
         };
       });
       return next;
@@ -194,7 +199,14 @@ function SettingsPage({ user, profile, onClose }) {
 
   const handleWorktimeChange = (userId, field, value) => {
     setWorktimeEdits((prev) => {
-      const current = prev[userId] || { weekdays: [], startTime: "", endTime: "" };
+      const current = prev[userId] || {
+        weekdays: [],
+        startTime: "",
+        endTime: "",
+        sundayStartTime: "",
+        sundayEndTime: "",
+        hourlyWage: "",
+      };
       return {
         ...prev,
         [userId]: { ...current, [field]: value },
@@ -218,6 +230,39 @@ function SettingsPage({ user, profile, onClose }) {
       setStatus("근무시간 저장에 실패했습니다: " + error.message);
     } finally {
       setSavingWorktimeUserId(null);
+    }
+  };
+
+  const handleSaveBulkHourlyWage = async () => {
+    if (!bulkHourlyWage) {
+      setStatus("시급을 입력하세요.");
+      return;
+    }
+    setIsSavingBulkWage(true);
+    setStatus("");
+    try {
+      const updates = allUsers.map(async (userItem) => {
+        const nextWorkTime = {
+          ...(worktimeEdits[userItem.id] || {}),
+          hourlyWage: bulkHourlyWage,
+        };
+        await updateDoc(doc(db, "users", userItem.id), {
+          workTime: nextWorkTime,
+        });
+        return nextWorkTime;
+      });
+      const nextWorktimeEdits = { ...worktimeEdits };
+      const results = await Promise.all(updates);
+      allUsers.forEach((userItem, index) => {
+        nextWorktimeEdits[userItem.id] = results[index];
+      });
+      setWorktimeEdits(nextWorktimeEdits);
+      setStatus("모든 직원의 시급이 저장되었습니다.");
+    } catch (error) {
+      console.error("Error saving bulk hourly wage:", error);
+      setStatus("시급 저장에 실패했습니다: " + error.message);
+    } finally {
+      setIsSavingBulkWage(false);
     }
   };
 
@@ -571,7 +616,7 @@ function SettingsPage({ user, profile, onClose }) {
               setStatus("");
             }}
           >
-            직원 근무시간 설정
+            직원 근무 설정
           </button>
           <button
             type="button"
@@ -789,7 +834,27 @@ function SettingsPage({ user, profile, onClose }) {
             </div>
           ) : selectedSection === "worktime" ? (
             <div className="settings-section">
-              <h3>어드민 근무시간 설정</h3>
+              <div className="settings-worktime-header">
+                <h3>어드민 근무 설정</h3>
+                <div className="settings-worktime-bulk">
+                  <span className="settings-worktime-bulk-label">시급 동일 설정</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={bulkHourlyWage}
+                    onChange={(event) => setBulkHourlyWage(event.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="settings-worktime-bulk-save"
+                    onClick={handleSaveBulkHourlyWage}
+                    disabled={isSavingBulkWage}
+                  >
+                    {isSavingBulkWage ? "저장 중..." : "저장"}
+                  </button>
+                </div>
+              </div>
               <p className="settings-description">
                 customer 타입 사용자별로 근무 요일과 시간을 설정합니다.
               </p>
@@ -802,6 +867,9 @@ function SettingsPage({ user, profile, onClose }) {
                       weekdays: [],
                       startTime: "",
                       endTime: "",
+                      sundayStartTime: "",
+                      sundayEndTime: "",
+                      hourlyWage: "",
                     };
                     return (
                       <div key={userItem.id} className="settings-user-item settings-worktime-item">
@@ -866,6 +934,69 @@ function SettingsPage({ user, profile, onClose }) {
                               </select>
                             </label>
                           </div>
+                        {worktime.weekdays.includes("일") && (
+                          <div className="settings-worktime-times">
+                            <label>
+                              일요일 시작
+                              <select
+                                value={worktime.sundayStartTime}
+                                onChange={(event) =>
+                                  handleWorktimeChange(
+                                    userItem.id,
+                                    "sundayStartTime",
+                                    event.target.value
+                                  )
+                                }
+                              >
+                                <option value="">선택</option>
+                                {hourOptions.map((hour) => (
+                                  <option key={`${userItem.id}-sun-start-${hour}`} value={hour}>
+                                    {hour}시
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <span>~</span>
+                            <label>
+                              일요일 종료
+                              <select
+                                value={worktime.sundayEndTime}
+                                onChange={(event) =>
+                                  handleWorktimeChange(
+                                    userItem.id,
+                                    "sundayEndTime",
+                                    event.target.value
+                                  )
+                                }
+                              >
+                                <option value="">선택</option>
+                                {hourOptions.map((hour) => (
+                                  <option key={`${userItem.id}-sun-end-${hour}`} value={hour}>
+                                    {hour}시
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+                        )}
+                        <div className="settings-worktime-times settings-worktime-wage">
+                          <label>
+                            시급
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={worktime.hourlyWage}
+                              onChange={(event) =>
+                                handleWorktimeChange(
+                                  userItem.id,
+                                  "hourlyWage",
+                                  event.target.value
+                                )
+                              }
+                            />
+                          </label>
+                        </div>
                         </div>
                         <button
                           type="button"

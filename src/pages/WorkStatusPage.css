@@ -1,0 +1,516 @@
+.work-status-page {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(59, 45, 30, 0.08);
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.work-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.work-status-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.work-status-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--text);
+}
+
+.work-status-month {
+  border: 1px solid var(--border);
+  background: #fffdfb;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.work-status-month:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.work-status-month-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.work-status-month-wrapper {
+  position: relative;
+}
+
+.work-status-nav {
+  border: 1px solid var(--border);
+  background: #fffdfb;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.work-status-nav:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.work-status-salary-button {
+  margin-left: 50px;
+  border: 1px solid #2b2b2b;
+  background: #2b2b2b;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #fff;
+  cursor: pointer;
+}
+
+.work-status-salary-button.active {
+  background: #1f1f1f;
+  border-color: #1f1f1f;
+}
+
+.work-status-salary-button:hover {
+  background: #1f1f1f;
+}
+
+.work-status-user-select {
+  margin-left: 50px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.work-status-user-select select {
+  border: 1px solid var(--border);
+  background: #fffdfb;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.work-status-apply-button {
+  margin-left: 20px;
+  border: 1px solid #2b2b2b;
+  background: #2b2b2b;
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.work-status-apply-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.work-status-holiday-controls {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.work-status-holiday-open,
+.work-status-holiday-type,
+.work-status-holiday-save {
+  border: 1px solid var(--border);
+  background: #fffdfb;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.work-status-holiday-type.active {
+  background: #2b2b2b;
+  border-color: #2b2b2b;
+  color: #fff;
+}
+
+.work-status-holiday-save {
+  border-color: #2b2b2b;
+  background: #2b2b2b;
+  color: #fff;
+}
+
+.work-status-holiday-message {
+  font-size: 11px;
+  color: #e4574f;
+}
+
+.work-status-picker {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 220px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fffdfb;
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+}
+
+.work-status-picker-year {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  justify-self: start;
+  cursor: pointer;
+}
+
+.work-status-month-list,
+.work-status-year-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.work-status-month-item,
+.work-status-year-item {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.work-status-month-item.active,
+.work-status-year-item.active {
+  background: #2b2b2b;
+  color: #fff;
+  border-color: #2b2b2b;
+}
+
+.work-status-body {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  color: var(--muted);
+  display: flex;
+}
+
+.work-status-empty {
+  flex: 1;
+  min-height: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 14px;
+  background: #fffdfb;
+  border-radius: 12px;
+}
+
+.work-status-salary {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.work-status-salary-card {
+  width: 100%;
+  max-width: 520px;
+  background: #fffdfb;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: var(--text);
+}
+
+.work-status-salary-meta {
+  font-size: 12px;
+  color: #6b6761;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.work-status-salary-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 16px;
+}
+
+.work-status-salary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-weight: 600;
+}
+
+.work-status-salary-spacer {
+  height: 6px;
+}
+
+.work-status-salary-divider {
+  border-top: 1px dashed #d9c5a5;
+}
+
+.work-status-salary-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+
+.work-status-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+}
+
+.work-status-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.work-status-weekday {
+  text-align: center;
+  padding: 8px 0;
+  border-radius: 8px;
+  background: #f7f2ea;
+}
+
+.work-status-grid {
+  display: grid;
+  gap: 8px;
+  flex: 1;
+}
+
+.work-status-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.work-status-day {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fffdfb;
+  min-height: 90px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 8px;
+  color: var(--text);
+  font-weight: 600;
+  position: relative;
+}
+
+.work-status-day.selected {
+  border-color: #2b2b2b;
+  box-shadow: inset 0 0 0 2px #2b2b2b;
+}
+
+.work-status-day-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.work-status-day-number {
+  align-self: flex-end;
+}
+
+.work-status-carryover {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2b2b2b;
+  background: #f7f2ea;
+  border-radius: 6px;
+  padding: 4px 6px;
+  align-self: flex-start;
+  margin-top: auto;
+  order: 2;
+}
+
+.work-status-weekly-allowance {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2b2b2b;
+  background: #f4efe8;
+  border-radius: 6px;
+  padding: 4px 6px;
+  align-self: flex-start;
+  order: 2;
+}
+
+.work-status-issue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.work-status-issue-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2b2b2b;
+  background: #f4efe8;
+  border-radius: 6px;
+  padding: 4px 6px;
+  align-self: flex-start;
+}
+
+.work-status-issue-tag.global {
+  background: #2b2b2b;
+  color: #fff;
+}
+
+button.work-status-issue-tag {
+  border: none;
+  cursor: pointer;
+}
+
+.work-status-issue-menu {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.work-status-issue-menu button {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.work-status-time {
+  font-size: 12px;
+  color: #2b2b2b;
+  background: #f4efe8;
+  border-radius: 6px;
+  padding: 4px 6px;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.work-status-time-button {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.work-status-net-time {
+  font-weight: 600;
+  color: #6b6761;
+}
+
+.work-status-late {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e4574f;
+  background: rgba(228, 87, 79, 0.12);
+  border-radius: 6px;
+  padding: 3px 6px;
+  align-self: flex-start;
+}
+
+.work-status-admin-action {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.work-status-admin-add,
+.work-status-admin-save,
+.work-status-admin-delete {
+  border: 1px solid var(--border);
+  background: #fffdfb;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.work-status-admin-delete {
+  border-color: #e4574f;
+  color: #e4574f;
+}
+
+.work-status-admin-form {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+  position: relative;
+  z-index: 2;
+  background: #fffdfb;
+  padding: 4px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  width: fit-content;
+}
+
+.work-status-admin-form input {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 12px;
+  background: #fff;
+  min-width: 110px;
+}
+
+.work-status-admin-error {
+  font-size: 11px;
+  color: #e4574f;
+  font-weight: 600;
+}

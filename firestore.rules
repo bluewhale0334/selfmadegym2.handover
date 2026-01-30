@@ -185,5 +185,24 @@ service cloud.firestore {
       allow delete: if request.auth != null
         && (resource.data.userId == request.auth.uid || isAdmin());
     }
+
+    // 근무 현황 기록 - 본인 읽기/쓰기, admin 전체 관리
+    match /workAttendance/{recordId} {
+      allow read: if request.auth != null
+        && (resource == null
+            || resource.data.userId == request.auth.uid
+            || isAdmin());
+      allow create: if request.auth != null
+        && (request.resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if request.auth != null
+        && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if request.auth != null && isAdmin();
+    }
+
+    // 공휴일/센터휴무 태그 (모든 사용자 읽기, admin만 쓰기)
+    match /workDayTags/{dateId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && isAdmin();
+    }
   }
 }

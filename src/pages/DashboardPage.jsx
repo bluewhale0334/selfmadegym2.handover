@@ -28,8 +28,9 @@ import EmployeeStatsPage from "./EmployeeStatsPage";
 import MyPostsPage from "./MyPostsPage";
 import SearchPage from "./SearchPage";
 import TrainerToRecruitPage from "./TrainerToRecruitPage";
+import WorkStatusPage from "./WorkStatusPage";
 
-function DashboardPage({ user, onShowAuthPage }) {
+function DashboardPage({ user, onShowAuthPage, onBeforeLogout }) {
   const [profile, setProfile] = useState(null);
   const [activeCategory, setActiveCategory] = useState("대시보드");
   const [activeDate, setActiveDate] = useState(null);
@@ -100,6 +101,20 @@ function DashboardPage({ user, onShowAuthPage }) {
 
   const updateNotes = useMemo(
     () => [
+      {
+        version: "1.4.0",
+        content: `# handoverSM 1.4.0 - 변경사항
+
+## 주요 변경사항
+
+### 1. 주휴수당 로직 개선
+- 첫 주차 이월 시간 포함 계산 및 라벨 표시
+- 이월 없는 첫 주차 주휴수당 발생 조건 보완
+- 주간 총 근로시간 기반 주휴수당 시간 산출 (최대 40h)
+
+### 2. 근무 현황 안정화
+- 주차별 근무일 충족 여부 판정 로직 정교화`,
+      },
       {
         version: "1.3.3",
         content: `# handoverSM 1.3.3 - 변경사항
@@ -692,10 +707,10 @@ App.jsx
     ],
     []
   );
-  const [expandedUpdateVersions, setExpandedUpdateVersions] = useState(() => new Set(["1.3.2"]));
+  const [expandedUpdateVersions, setExpandedUpdateVersions] = useState(() => new Set(["1.4.0"]));
   const currentVersionInfo = useMemo(
     () => `## 버전 정보
-- **버전**: 1.3.2
+- **버전**: 1.4.0
 - **프로젝트명**: handoverSM
 - **개발 환경**: React + Vite + Firebase`,
     []
@@ -767,6 +782,7 @@ App.jsx
   const categories = useMemo(
     () => [
       { label: "대시보드", type: "dashboard", hasDates: false },
+      { label: "근무 현황", type: "workStatus", hasDates: false },
       { label: "전체 공지", type: "notice", hasDates: false },
       { label: "업무 지시", type: "instruction", hasDates: true },
       { label: "일일 인수인계", type: "handover", hasDates: true },
@@ -1274,6 +1290,8 @@ App.jsx
             onSelectDocument={handleSelectDocument}
           />
         );
+      case "근무 현황":
+        return <WorkStatusPage user={user} profile={profile} />;
       case "전체 공지":
         return <NoticeContent {...props} />;
       case "업무 지시":
@@ -1590,6 +1608,7 @@ App.jsx
                 type="button"
                 onClick={async () => {
                   try {
+                    await onBeforeLogout?.();
                     await signOut(auth);
                   } catch (error) {
                     console.error(error);

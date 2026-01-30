@@ -35,7 +35,42 @@ const formatWorkTime = (workTime) => {
   const endTime = workTime?.endTime ? `${workTime.endTime}` : "";
   const timeText =
     startTime && endTime ? `${startTime}~${endTime}시` : "미설정";
-  return `${weekdaysText} / ${timeText}`;
+  const hasSunday = weekdays.includes("일");
+  const sundayStart = workTime?.sundayStartTime ? `${workTime.sundayStartTime}` : "";
+  const sundayEnd = workTime?.sundayEndTime ? `${workTime.sundayEndTime}` : "";
+  const sundayText =
+    hasSunday && sundayStart && sundayEnd
+      ? `${sundayStart}~${sundayEnd}시(일)`
+      : "";
+  return sundayText
+    ? `${weekdaysText} / ${timeText} / ${sundayText}`
+    : `${weekdaysText} / ${timeText}`;
+};
+
+const getNetWorkHoursValue = (timeRange, weekdayIndex) => {
+  if (!timeRange) return 0;
+  const [start, end] = timeRange.split("-");
+  if (!start || !end) return 0;
+  const [startHour, startMinute = "0"] = start.split(":");
+  const [endHour, endMinute = "0"] = end.split(":");
+  const startTotal = Number(startHour) * 60 + Number(startMinute);
+  const endTotal = Number(endHour) * 60 + Number(endMinute);
+  if (!Number.isFinite(startTotal) || !Number.isFinite(endTotal)) return 0;
+
+  let durationMinutes = endTotal - startTotal;
+  if (durationMinutes <= 0) {
+    durationMinutes += 24 * 60;
+  }
+
+  let breakMinutes = 0;
+  if (weekdayIndex >= 1 && weekdayIndex <= 5) {
+    if (durationMinutes >= 9 * 60) {
+      breakMinutes = 60;
+    }
+  }
+
+  const netMinutes = Math.max(0, durationMinutes - breakMinutes);
+  return netMinutes / 60;
 };
 
 function EmployeeStatsPage({ profile, onClose }) {
@@ -69,6 +104,8 @@ function EmployeeStatsPage({ profile, onClose }) {
 
         const now = new Date();
         const nowMinutes = now.getHours() * 60 + now.getMinutes();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
 
         const stats = await Promise.all(
           users.map(async (user) => {
@@ -105,6 +142,42 @@ function EmployeeStatsPage({ profile, onClose }) {
                 extraItems.filter((item) => item.done).length;
             });
             const percent = totalCount === 0 ? 0 : Math.round((doneCount / totalCount) * 100);
+            const attendanceSnapshot = await getDocs(
+              query(
+                collection(db, "workAttendance"),
+                where("userId", "==", user.id)
+              )
+            );
+            const recordByDate = {};
+            attendanceSnapshot.forEach((recordDoc) => {
+              const data = recordDoc.data();
+              if (!data.date) return;
+              const existing = recordByDate[data.date];
+              if (!existing || data.source === "admin") {
+                recordByDate[data.date] = data;
+              }
+            });
+            const monthRecords = Object.values(recordByDate).filter((record) => {
+              const [recordYear, recordMonth] = String(record.date)
+                .split("-")
+                .map(Number);
+              return recordYear === currentYear && recordMonth === currentMonth;
+            });
+            const totalWorkDays = monthRecords.filter(
+              (record) => record.startTime && record.endTime
+            ).length;
+            const totalWorkHours = monthRecords.reduce((sum, record) => {
+              if (!record.startTime || !record.endTime) return sum;
+              const [yearPart, monthPart, dayPart] = String(record.date)
+                .split("-")
+                .map(Number);
+              if (!yearPart || !monthPart || !dayPart) return sum;
+              const weekdayIndex = new Date(yearPart, monthPart - 1, dayPart).getDay();
+              const timeRange = `${record.startTime}-${record.endTime}`;
+              return sum + getNetWorkHoursValue(timeRange, weekdayIndex);
+            }, 0);
+            const hourlyWage = Number(user.workTime?.hourlyWage || 0);
+            const monthlyWage = Math.floor(totalWorkHours * hourlyWage);
             return {
               id: user.id,
               name: user.name,
@@ -114,6 +187,9 @@ function EmployeeStatsPage({ profile, onClose }) {
               doneCount,
               createdAt: user.createdAt,
               workTime: user.workTime,
+              monthlyWage,
+              hourlyWage,
+            totalWorkDays,
             };
           })
         );
@@ -216,7 +292,7 @@ function EmployeeStatsPage({ profile, onClose }) {
                                   출근 일수
                                 </span>
                                 <span className="employee-stats-card-info-value">
-                                  준비중
+                                  {stat.totalWorkDays ? `${stat.totalWorkDays}일` : "0일"}
                                 </span>
                               </div>
                               <div className="employee-stats-card-info-item">
@@ -224,7 +300,9 @@ function EmployeeStatsPage({ profile, onClose }) {
                                   이번달 예상급여
                                 </span>
                                 <span className="employee-stats-card-info-value">
-                                  준비중
+                                  {stat.hourlyWage
+                                    ? `${stat.monthlyWage.toLocaleString()}원`
+                                    : "미설정"}
                                 </span>
                               </div>
                             </div>
