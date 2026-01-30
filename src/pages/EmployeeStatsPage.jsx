@@ -55,6 +55,8 @@ function EmployeeStatsPage({ profile, onClose }) {
     () => new Date(todayDate.getFullYear(), todayDate.getMonth(), 1)
   );
   const [activeTab, setActiveTab] = useState("checklist"); // 'checklist' | 'salary'
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isYearListOpen, setIsYearListOpen] = useState(false);
   const [checklistStats, setChecklistStats] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState("");
@@ -74,6 +76,27 @@ function EmployeeStatsPage({ profile, onClose }) {
   const handleNextMonth = () => {
     setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   };
+
+  const handleOpenPicker = () => {
+    setIsPickerOpen((prev) => !prev);
+    setIsYearListOpen(false);
+  };
+
+  const handleSelectMonth = (monthIndex) => {
+    setViewDate((prev) => new Date(prev.getFullYear(), monthIndex, 1));
+    setIsPickerOpen(false);
+    setIsYearListOpen(false);
+  };
+
+  const handleSelectYear = (yearValue) => {
+    setViewDate((prev) => new Date(yearValue, prev.getMonth(), 1));
+    setIsYearListOpen(false);
+  };
+
+  const yearOptions = useMemo(() => {
+    const current = viewDate.getFullYear();
+    return Array.from({ length: 10 }, (_, index) => current - 4 + index);
+  }, [viewDate]);
 
   const todayStr = useMemo(() => {
     const y = todayDate.getFullYear();
@@ -289,7 +312,57 @@ function EmployeeStatsPage({ profile, onClose }) {
               viewMonth={viewMonth}
               onPrevMonth={handlePrevMonth}
               onNextMonth={handleNextMonth}
-            />
+              onClickMonth={handleOpenPicker}
+            >
+              {isPickerOpen && (
+                <div className="work-status-picker">
+                  <button
+                    type="button"
+                    className="work-status-picker-year"
+                    onClick={() => setIsYearListOpen((prev) => !prev)}
+                  >
+                    {viewYear}년
+                  </button>
+                  {isYearListOpen ? (
+                    <div className="work-status-year-list">
+                      {yearOptions.map((yearValue) => (
+                        <button
+                          key={yearValue}
+                          type="button"
+                          className={[
+                            "work-status-year-item",
+                            yearValue === viewYear ? "active" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          onClick={() => handleSelectYear(yearValue)}
+                        >
+                          {yearValue}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="work-status-month-list">
+                      {Array.from({ length: 12 }, (_, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          className={[
+                            "work-status-month-item",
+                            index === viewDate.getMonth() ? "active" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          onClick={() => handleSelectMonth(index)}
+                        >
+                          {index + 1}월
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </StatsMonthNavigation>
           </div>
           {onClose && (
             <button type="button" className="employee-stats-close" onClick={onClose}>
@@ -361,6 +434,7 @@ function EmployeeStatsPage({ profile, onClose }) {
                       viewMonth={viewMonth}
                       onPrevMonth={handlePrevMonth}
                       onNextMonth={handleNextMonth}
+                      onClickMonth={handleOpenPicker}
                     />
                   </div>
                   <EmployeeStatsPagination
@@ -444,6 +518,7 @@ function EmployeeStatsPage({ profile, onClose }) {
                       viewMonth={viewMonth}
                       onPrevMonth={handlePrevMonth}
                       onNextMonth={handleNextMonth}
+                      onClickMonth={handleOpenPicker}
                     />
                   </div>
                   <EmployeeStatsPagination

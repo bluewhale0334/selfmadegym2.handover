@@ -71,12 +71,64 @@
   background: rgba(255, 255, 255, 0.8);
 }
 
+.work-status-picker {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 220px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fffdfb;
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+}
+
+.work-status-picker-year {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  justify-self: start;
+  cursor: pointer;
+}
+
+.work-status-month-list,
+.work-status-year-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.work-status-month-item,
+.work-status-year-item {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.work-status-month-item.active,
+.work-status-year-item.active {
+  background: #2b2b2b;
+  color: #fff;
+  border-color: #2b2b2b;
+}
+
 .employee-stats-footer-nav {
   display: flex;
   justify-content: center;
   margin-top: 24px;
   padding-top: 16px;
-  border-top: 1px dashed #e8dbc5;
+  border-top: 1px dashed #e8dbc5fc;
 }
 
 .employee-stats-salary-content {
