@@ -102,6 +102,18 @@ function DashboardPage({ user, onShowAuthPage, onBeforeLogout }) {
   const updateNotes = useMemo(
     () => [
       {
+        version: "1.4.3",
+        content: `# handoverSM 1.4.3 - 변경사항
+
+## 주요 변경사항
+
+### 1. 대시보드 문서/토글 편집 개선
+- 문서 내용과 토글 내용을 통합해 토글 기반 편집 구조로 변경
+- 토글 추가/삭제 및 수정 흐름 개선
+- 토글 내용에 Quill 에디터 적용 및 줄바꿈 정리 로직 추가
+- 토글 카드 레이아웃(1열 세로) 및 삭제 버튼 위치 정리`,
+      },
+      {
         version: "1.4.2",
         content: `# handoverSM 1.4.2 - 변경사항
 
@@ -737,10 +749,10 @@ App.jsx
     ],
     []
   );
-  const [expandedUpdateVersions, setExpandedUpdateVersions] = useState(() => new Set(["1.4.2"]));
+  const [expandedUpdateVersions, setExpandedUpdateVersions] = useState(() => new Set(["1.4.3"]));
   const currentVersionInfo = useMemo(
     () => `## 버전 정보
-- **버전**: 1.4.2
+- **버전**: 1.4.3
 - **프로젝트명**: handoverSM
 - **개발 환경**: React + Vite + Firebase`,
     []
@@ -1645,7 +1657,7 @@ App.jsx
                   }
                 }}
               >
-                로그아웃
+                퇴근하기
               </button>
             </>
           ) : (
@@ -1655,7 +1667,7 @@ App.jsx
                 type="button"
                 onClick={() => onShowAuthPage?.("login")}
               >
-                로그인
+                출근하기
               </button>
               <button
                 className="signup-button"
