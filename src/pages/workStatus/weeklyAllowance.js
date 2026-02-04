@@ -9,7 +9,14 @@ const parseTimeToMinutes = (value) => {
   return hour * 60 + minute;
 };
 
+// Deprecated: 이제 DB에서 저장된 assumedHours를 사용합니다.
+// 하위 호환성을 위해 유지하지만, workTime.assumedHours가 있으면 우선 사용합니다.
 const getDailyAssumedHours = (workTime) => {
+  // DB에 저장된 상정근로시간이 있으면 우선 사용
+  if (workTime?.assumedHours != null && workTime.assumedHours !== "") {
+    return Number(workTime.assumedHours) || 0;
+  }
+  // 하위 호환성: 기존 계산 방식 (startTime, endTime 기반)
   if (!workTime?.startTime || !workTime?.endTime) return 0;
   const startMinutes = parseTimeToMinutes(workTime.startTime);
   const endMinutes = parseTimeToMinutes(workTime.endTime);
@@ -52,6 +59,7 @@ export const calculateWeeklyAllowance = ({
 }) => {
   const results = [];
   let carryoverHours = 0;
+  const isWeeklyAllowanceEnabled = workTime?.weeklyAllowanceEnabled !== false;
   const dailyAssumedHours = getDailyAssumedHours(workTime);
   const scheduledWeekdayCount = Array.isArray(workTime?.weekdays)
     ? workTime.weekdays.filter((day) => day !== "일").length
@@ -153,7 +161,7 @@ export const calculateWeeklyAllowance = ({
         return count + 1;
       }, 0);
 
-    const eligible = hasScheduledDays
+    const eligible = isWeeklyAllowanceEnabled && hasScheduledDays
       ? isFirstWeek
         ? (carryoverFromPrev > 0 || prevMonthScheduledCount === 0) &&
           Object.values(attendedMap).every(Boolean)

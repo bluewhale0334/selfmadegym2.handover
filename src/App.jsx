@@ -5,7 +5,7 @@ import {
   setPersistence,
   signOut,
 } from "firebase/auth";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { deleteField, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -147,6 +147,7 @@ function App() {
       startTime: formatMinutesToTime(nextStart),
       late,
       source: "auto",
+      issueType: deleteField(),
     });
   };
 
@@ -174,6 +175,7 @@ function App() {
     await updateAttendanceRecord(userData.id, dateKey, {
       endTime: formatMinutesToTime(nextEnd),
       source: "auto",
+      issueType: deleteField(),
     });
   };
 
@@ -236,7 +238,7 @@ function App() {
             ) {
               // ❗이 부분은 별도의 try-catch로 감싸서 권한 오류가 발생해도 로그인을 방해하지 않게 함
               try {
-                await recordLogout(previousUserData, new Date());
+              await recordLogout(previousUserData, new Date());
               } catch (logoutError) {
                 console.warn("Could not record logout for previous user (expected during handover):", logoutError);
               }
@@ -251,13 +253,13 @@ function App() {
             // 새 사용자의 로그인 기록 처리
             if (hasInitializedRef.current && userData.user_type === "customer") {
               try {
-                await recordLogin(
-                  {
-                    id: currentUser.uid,
-                    ...userData,
-                  },
-                  new Date()
-                );
+              await recordLogin(
+                {
+                  id: currentUser.uid,
+                  ...userData,
+                },
+                new Date()
+              );
               } catch (loginError) {
                 console.warn("Could not record login for current user:", loginError);
               }
@@ -266,10 +268,10 @@ function App() {
             // Firestore에 사용자 문서가 없으면 로그아웃 (새 가입 대기 중이 아닐 때만)
             if (!sessionStorage.getItem("pendingUserDocUid")) {
               console.log("User document not found, signing out...");
-              await signOut(auth);
-              setUser(null);
-              setIsLoading(false);
-              return;
+            await signOut(auth);
+            setUser(null);
+            setIsLoading(false);
+            return;
             }
           }
         } catch (error) {

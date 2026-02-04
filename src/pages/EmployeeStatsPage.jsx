@@ -266,7 +266,7 @@ function EmployeeStatsPage({ profile, onClose }) {
               totalWeeklyBonus,
               totalWorkHours,
               hourlyWage,
-              totalWorkDays,
+            totalWorkDays,
             };
           })
         );
@@ -306,7 +306,7 @@ function EmployeeStatsPage({ profile, onClose }) {
       <div className="employee-stats-card">
         <div className="employee-stats-header">
           <div className="employee-stats-title-group">
-            <h2>직원 통계</h2>
+          <h2>직원 통계</h2>
             <StatsMonthNavigation
               viewYear={viewYear}
               viewMonth={viewMonth}

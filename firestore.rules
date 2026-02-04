@@ -1,101 +1,19 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // 헬퍼 함수: 인증된 사용자인지 확인
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // 헬퍼 함수: 현재 사용자가 관리자인지 확인 (가장 안전한 방식)
-    function isAdmin() {
-      return isAuthenticated() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('user_type', 'customer') == 'admin';
-    }
-
-    match /users/{userId} {
-      allow create: if isAuthenticated() && request.auth.uid == userId;
-      // 본인 데이터는 즉시 허용, 그 외는 customer 유저나 관리자만 읽기 가능
-      allow read: if isAuthenticated() && (
-        request.auth.uid == userId || 
-        resource.data.get('user_type', 'customer') == 'customer' || 
-        isAdmin()
-      );
-      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow delete: if isAuthenticated() && isAdmin();
-    }
-
+    // 회원가입 화면에서 색상 목록을 불러오기 위해 공개 읽기 허용
     match /tagColors/{colorId} {
       allow read: if true;
-      allow create: if isAuthenticated() && (request.resource.data.uid == request.auth.uid || isAdmin());
-      allow update, delete: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow write: if isAuthenticated();
     }
 
-    // ... (이전의 canUpdateReadBy, canUpdateComments 함수들은 유지)
-
-    // 모든 업무 관련 데이터는 팀원(인증된 유저) 전체가 읽을 수 있도록 허용 
-    // (인수인계 시 찰나의 권한 충돌 방지 및 협업 효율성 목적)
-    
-    match /notices/{id} { allow read: if isAuthenticated(); }
-    match /instructions/{id} { allow read: if isAuthenticated(); }
-    match /handovers/{id} { allow read: if isAuthenticated(); }
-    match /progresses/{id} { allow read: if isAuthenticated(); }
-    match /checklists/{id} { allow read: if isAuthenticated(); }
-    match /checklistTasks/{id} { allow read: if isAuthenticated(); }
-    match /repeatChecklistTasks/{id} { allow read: if isAuthenticated(); }
-    match /dailyChecklistSnapshots/{id} { allow read: if isAuthenticated(); }
-    match /workAttendance/{id} { allow read: if isAuthenticated(); }
-    match /workDayTags/{id} { allow read: if isAuthenticated(); }
-
-    // 업데이트/삭제 권한은 엄격하게 유지 (본인 또는 관리자만)
-    
-    match /notices/{id} {
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin() || canUpdateReadBy(resource.data, request.resource.data) || canUpdateComments(resource.data, request.resource.data));
-      allow delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin());
-    }
-
-    match /instructions/{id} {
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin() || canUpdateReadBy(resource.data, request.resource.data) || canUpdateComments(resource.data, request.resource.data));
-      allow delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin());
-    }
-
-    match /handovers/{id} {
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin() || canUpdateReadBy(resource.data, request.resource.data) || canUpdateComments(resource.data, request.resource.data));
-      allow delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin());
-    }
-
-    match /progresses/{id} {
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin() || canUpdateReadBy(resource.data, request.resource.data) || canUpdateComments(resource.data, request.resource.data));
-      allow delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin());
-    }
-
-    match /checklists/{id} {
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
-    }
-
-    match /checklistTasks/{id} {
-      allow create, update, delete: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isAdmin());
-    }
-
-    match /repeatChecklistTasks/{id} {
-      allow create, update, delete: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isAdmin());
-    }
-
-    match /dailyChecklistSnapshots/{id} {
-      allow create, update, delete: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isAdmin());
-    }
-
-    match /workAttendance/{id} {
-      // 인수인계 시 퇴근 처리를 위해 업데이트 권한을 소폭 완화
-      allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isAdmin());
-      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['endTime', 'updatedAt', 'source'])));
-      allow delete: if isAuthenticated() && isAdmin();
+    // 로그인한 사용자에게 모든 CRUD 권한을 허용
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
     }
   }
 }

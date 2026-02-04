@@ -177,6 +177,8 @@ function SettingsPage({ user, profile, onClose }) {
           sundayStartTime: normalizeHourValue(workTime.sundayStartTime),
           sundayEndTime: normalizeHourValue(workTime.sundayEndTime),
           hourlyWage: workTime.hourlyWage ?? "",
+          assumedHours: workTime.assumedHours ?? "",
+          weeklyAllowanceEnabled: workTime.weeklyAllowanceEnabled ?? true,
         };
       });
       return next;
@@ -206,6 +208,8 @@ function SettingsPage({ user, profile, onClose }) {
         sundayStartTime: "",
         sundayEndTime: "",
         hourlyWage: "",
+        assumedHours: "",
+        weeklyAllowanceEnabled: true,
       };
       return {
         ...prev,
@@ -870,6 +874,8 @@ function SettingsPage({ user, profile, onClose }) {
                       sundayStartTime: "",
                       sundayEndTime: "",
                       hourlyWage: "",
+                      assumedHours: "",
+                      weeklyAllowanceEnabled: true,
                     };
                     return (
                       <div key={userItem.id} className="settings-user-item settings-worktime-item">
@@ -933,6 +939,24 @@ function SettingsPage({ user, profile, onClose }) {
                                 ))}
                               </select>
                             </label>
+                            <label>
+                              상정근로시간
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.1"
+                                placeholder="0"
+                                value={worktime.assumedHours ?? ""}
+                                onChange={(event) =>
+                                  handleWorktimeChange(
+                                    userItem.id,
+                                    "assumedHours",
+                                    event.target.value
+                                  )
+                                }
+                                className="settings-assumed-hours-input"
+                              />
+                            </label>
                           </div>
                         {worktime.weekdays.includes("일") && (
                           <div className="settings-worktime-times">
@@ -995,6 +1019,24 @@ function SettingsPage({ user, profile, onClose }) {
                                 )
                               }
                             />
+                          </label>
+                          <label className="settings-weekly-allowance-toggle">
+                            주휴수당
+                            <button
+                              type="button"
+                              className={`settings-toggle-switch ${
+                                worktime.weeklyAllowanceEnabled ? "on" : "off"
+                              }`}
+                              onClick={() =>
+                                handleWorktimeChange(
+                                  userItem.id,
+                                  "weeklyAllowanceEnabled",
+                                  !worktime.weeklyAllowanceEnabled
+                                )
+                              }
+                            >
+                              <span className="settings-toggle-slider" />
+                            </button>
                           </label>
                         </div>
                         </div>
