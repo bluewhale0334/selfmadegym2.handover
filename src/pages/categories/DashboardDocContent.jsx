@@ -119,6 +119,16 @@ function DashboardDocContent({ user }) {
     if (!activeDoc || isEditing) return;
     setDraftTitle(activeDoc.title || DEFAULT_DOC_TITLE);
     setDraftToggles(normalizeToggles(activeDoc.toggles, activeDoc.content));
+    setCollapsedToggleIds((prev) => {
+      const next = { ...prev };
+      const toggles = normalizeToggles(activeDoc.toggles, activeDoc.content);
+      toggles.forEach((toggle) => {
+        if (next[toggle.id] === undefined) {
+          next[toggle.id] = true;
+        }
+      });
+      return next;
+    });
   }, [activeDoc, isEditing]);
 
   const startEditing = (docItem) => {
@@ -213,6 +223,10 @@ function DashboardDocContent({ user }) {
       content: "",
     };
     setDraftToggles((prev) => [...prev, nextToggle]);
+    setCollapsedToggleIds((prev) => ({
+      ...prev,
+      [nextToggle.id]: true,
+    }));
   };
 
   const handleToggleTitleChange = (toggleId, value) => {
@@ -370,7 +384,7 @@ function DashboardDocContent({ user }) {
             </h3>
             <div className="dashboard-doc-toggle-grid">
               {displayToggles.map((toggle) => {
-                const isCollapsed = collapsedToggleIds[toggle.id];
+                const isCollapsed = collapsedToggleIds[toggle.id] ?? true;
                 return (
                   <div key={toggle.id} className="dashboard-doc-toggle-card">
                     <div className="dashboard-doc-toggle-header">
