@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, getDocs, query, updateDoc, deleteDoc, where, setDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, deleteField, getDocs, query, updateDoc, deleteDoc, where, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import "./SettingsPage.css";
 
@@ -150,6 +150,7 @@ function SettingsPage({ user, profile, onClose }) {
               tagColor: data.tagColor || "gray",
               user_type: data.user_type || "customer",
               workTime: data.workTime || {},
+              excludeFromAbsenceTag: data.excludeFromAbsenceTag || false,
             });
           }
         });
@@ -216,6 +217,29 @@ function SettingsPage({ user, profile, onClose }) {
         [userId]: { ...current, [field]: value },
       };
     });
+  };
+
+  const handleToggleExcludeFromAbsenceTag = async (userItem) => {
+    const nextValue = !userItem.excludeFromAbsenceTag;
+    setStatus("");
+    try {
+      await updateDoc(doc(db, "users", userItem.id), {
+        excludeFromAbsenceTag: nextValue,
+      });
+      setAllUsers((prev) =>
+        prev.map((u) =>
+          u.id === userItem.id ? { ...u, excludeFromAbsenceTag: nextValue } : u
+        )
+      );
+      setStatus(
+        nextValue
+          ? `${userItem.name}님은 결근 태그에서 제외됩니다.`
+          : `${userItem.name}님은 결근 태그에 포함됩니다.`
+      );
+    } catch (error) {
+      console.error("Error toggling excludeFromAbsenceTag:", error);
+      setStatus("설정 변경에 실패했습니다.");
+    }
   };
 
   const handleSaveWorktime = async (userItem) => {
@@ -485,12 +509,13 @@ function SettingsPage({ user, profile, onClose }) {
         }
       }
 
-      // users 문서에서 tagColor를 빈 문자열로, email을 빈 문자열로, disabled 플래그 추가
+      // users 문서에서 tagColor를 빈 문자열로, email을 빈 문자열로, disabled 플래그 추가, deletedAt 설정
       const userRef = doc(db, "users", targetUserId);
       await updateDoc(userRef, {
         tagColor: "",
         email: "",
         disabled: true,
+        deletedAt: serverTimestamp(),
       });
 
       setStatus(`${targetUserName}님이 퇴사 처리되었습니다.`);
@@ -552,12 +577,13 @@ function SettingsPage({ user, profile, onClose }) {
         createdAt: serverTimestamp(),
       });
 
-      // users 문서 업데이트: email, tagColor 복원, disabled 제거
+      // users 문서 업데이트: email, tagColor 복원, disabled 제거, deletedAt 제거
       const userRef = doc(db, "users", selectedUserForRestore.id);
       await updateDoc(userRef, {
         email: restoreEmail,
         tagColor: restoreTagColor,
-        disabled: false, // false로 설정 (필드가 존재하지만 비활성화되지 않음)
+        disabled: false,
+        deletedAt: deleteField(),
       });
       
       setStatus(`${selectedUserForRestore.name}님이 복귀 처리되었습니다.`);
@@ -890,6 +916,14 @@ function SettingsPage({ user, profile, onClose }) {
                           <span className="settings-user-role">{userItem.role}</span>
                           <span className="settings-user-email">{userItem.email}</span>
                         </div>
+                        <label className="settings-exclude-absence-label">
+                          <input
+                            type="checkbox"
+                            checked={userItem.excludeFromAbsenceTag || false}
+                            onChange={() => handleToggleExcludeFromAbsenceTag(userItem)}
+                          />
+                          태그 제외
+                        </label>
                         <div className="settings-worktime-controls">
                           <div className="settings-worktime-weekdays">
                             {weekdayOptions.map((day) => (

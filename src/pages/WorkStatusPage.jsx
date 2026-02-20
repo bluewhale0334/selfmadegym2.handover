@@ -26,7 +26,7 @@ function WorkStatusPage({ user, profile }) {
   const [isYearListOpen, setIsYearListOpen] = useState(false);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [showSalaryView, setShowSalaryView] = useState(false);
-  const [customerUsers, setCustomerUsers] = useState([]);
+  const [allCustomerUsers, setAllCustomerUsers] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [selectedUserProfile, setSelectedUserProfile] = useState(null);
   const [editingDate, setEditingDate] = useState("");
@@ -78,6 +78,33 @@ function WorkStatusPage({ user, profile }) {
     }
     return rows;
   }, [days, startDayIndex]);
+
+  const getDeletedAtDate = (deletedAt) => {
+    if (!deletedAt) return null;
+    if (typeof deletedAt?.toDate === "function") return deletedAt.toDate();
+    if (typeof deletedAt?.seconds === "number") return new Date(deletedAt.seconds * 1000);
+    if (typeof deletedAt === "string") return new Date(deletedAt);
+    return null;
+  };
+
+  const isUserVisibleForMonth = (userItem, viewYear, viewMonth) => {
+    const deleted = getDeletedAtDate(userItem.deletedAt);
+    if (!deleted) return true;
+    if (viewYear < deleted.getFullYear()) return true;
+    if (viewYear > deleted.getFullYear()) return false;
+    return viewMonth <= deleted.getMonth() + 1;
+  };
+
+  const getDeletedAtDateKey = (deletedAt) => {
+    const d = getDeletedAtDate(deletedAt);
+    if (!d) return null;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
+  const customerUsers = useMemo(
+    () => allCustomerUsers.filter((u) => isUserVisibleForMonth(u, year, month)),
+    [allCustomerUsers, year, month]
+  );
 
   const gridStartDate = useMemo(() => {
     const firstDay = new Date(year, month - 1, 1);
@@ -211,6 +238,9 @@ function WorkStatusPage({ user, profile }) {
   const weekdaysText = weekdays.length > 0 ? weekdays.join(",") : "미설정";
 
   const assumedHours = useMemo(() => {
+    if (workTime.assumedHours != null && workTime.assumedHours !== "") {
+      return Number(workTime.assumedHours) || 0;
+    }
     if (!startTime || !endTime) return 0;
     const startParts = startTime.split(":");
     const endParts = endTime.split(":");
@@ -224,7 +254,7 @@ function WorkStatusPage({ user, profile }) {
     const durationHours = durationMinutes / 60;
     const dailyAssumed = Math.max(0, durationHours - 1);
     return dailyAssumed * weekdayCountExSunday;
-  }, [startTime, endTime, weekdayCountExSunday]);
+  }, [endTime, startTime, weekdayCountExSunday, workTime.assumedHours]);
 
   const monthRecords = useMemo(
     () =>
@@ -290,7 +320,7 @@ function WorkStatusPage({ user, profile }) {
 
   useEffect(() => {
     if (!isAdmin || !user) {
-      setCustomerUsers([]);
+      setAllCustomerUsers([]);
       setSelectedUserId("");
       setSelectedUserProfile(null);
       return;
@@ -305,11 +335,7 @@ function WorkStatusPage({ user, profile }) {
           id: docSnap.id,
           ...docSnap.data(),
         }));
-        setCustomerUsers(users);
-        if (selectedUserId) {
-          const selected = users.find((userItem) => userItem.id === selectedUserId);
-          setSelectedUserProfile(selected || null);
-        }
+        setAllCustomerUsers(users);
       } catch (error) {
         console.error("Error fetching customer users:", error);
       }
@@ -317,6 +343,13 @@ function WorkStatusPage({ user, profile }) {
 
     fetchCustomerUsers();
   }, [isAdmin, user]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    if (selectedUserId && !customerUsers.some((u) => u.id === selectedUserId)) {
+      setSelectedUserId("");
+    }
+  }, [isAdmin, customerUsers, selectedUserId]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -463,10 +496,17 @@ function WorkStatusPage({ user, profile }) {
     });
     const todayDate = new Date();
     const map = {};
+    const userIdToDeletedAtKey = {};
+    allCustomerUsers.forEach((u) => {
+      const key = getDeletedAtDateKey(u.deletedAt);
+      if (key) userIdToDeletedAtKey[u.id] = key;
+    });
     Object.values(preferredByUserDate).forEach((record) => {
       if (!record.date) return;
+      const deletedAtKey = userIdToDeletedAtKey[record.userId];
+      if (deletedAtKey && record.date >= deletedAtKey) return;
       const issueType = record.issueType || (record.late ? "지각" : "");
-      if (!issueType || issueType === "공휴일" || issueType === "센터휴무") return;
+      if (!issueType || issueType === "공휴일" || issueType === "센터휴무" || issueType === "hide") return;
       if (!map[record.date]) {
         map[record.date] = [];
       }
@@ -476,11 +516,14 @@ function WorkStatusPage({ user, profile }) {
       });
     });
     customerUsers.forEach((userItem) => {
+      if (userItem.excludeFromAbsenceTag) return;
+      const deletedAtKey = getDeletedAtDateKey(userItem.deletedAt);
       const workWeekdays = Array.isArray(userItem.workTime?.weekdays)
         ? userItem.workTime.weekdays
         : [];
       for (let day = 1; day <= days; day += 1) {
         const dateKey = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        if (deletedAtKey && dateKey >= deletedAtKey) continue;
         const dateObj = new Date(year, month - 1, day);
         if (isBeforeCreatedAt(dateObj, userItem.createdAt)) {
           continue;
@@ -509,7 +552,7 @@ function WorkStatusPage({ user, profile }) {
       }
     });
     return map;
-  }, [attendanceRecords, isAdmin, selectedUserId, customerUsers, days, year, month, holidayTags]);
+  }, [attendanceRecords, isAdmin, selectedUserId, allCustomerUsers, customerUsers, days, year, month, holidayTags]);
 
   const startEdit = (dateKey, record) => {
     setEditingDate(dateKey);
@@ -963,7 +1006,10 @@ function WorkStatusPage({ user, profile }) {
                       >
                       {day ? (
                         <div className="work-status-day-content">
-                          {isAdmin && selectedUserId ? (
+                          {isAdmin && selectedUserId &&
+                            !(getDeletedAtDateKey(activeProfile?.deletedAt) &&
+                              `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}` >=
+                                getDeletedAtDateKey(activeProfile?.deletedAt)) ? (
                             <div className="work-status-admin-action">
                               {editingDate === `${year}-${String(month).padStart(2, "0")}-${String(
                                 day
@@ -1085,6 +1131,8 @@ function WorkStatusPage({ user, profile }) {
                             ).padStart(2, "0")}`;
                             const record = attendanceByDate[dateKey];
                             const holidayTag = holidayTags[dateKey];
+                            const deletedAtKey = getDeletedAtDateKey(activeProfile?.deletedAt);
+                            if (deletedAtKey && dateKey >= deletedAtKey) return null;
                           if (isAdmin && selectedUserId && editingDate === dateKey) {
                             return (
                               <div className="work-status-admin-form" ref={editFormRef}>
@@ -1137,6 +1185,8 @@ function WorkStatusPage({ user, profile }) {
                                 record?.issueType ||
                                 (isPast && shouldWork && !isBeforeJoinDate ? "결근" : "");
                               if (!issueType) return null;
+                              if (issueType === "hide") return null;
+                              if (issueType === "결근" && activeProfile?.excludeFromAbsenceTag) return null;
                               return (
                                 <div className="work-status-issue-list">
                                   <button
@@ -1153,11 +1203,16 @@ function WorkStatusPage({ user, profile }) {
                                   </button>
                                   {isAdmin && issueEditDate === dateKey && (
                                     <div className="work-status-issue-menu">
-                                      {["결근", "지각", "공휴일", "센터휴무"].map((type) => (
+                                      {["결근", "지각", "공휴일", "센터휴무", "삭제"].map((type) => (
                                         <button
                                           key={type}
                                           type="button"
-                                          onClick={() => handleSelectIssueType(dateKey, type)}
+                                          onClick={() =>
+                                            handleSelectIssueType(
+                                              dateKey,
+                                              type === "삭제" ? "hide" : type
+                                            )
+                                          }
                                         >
                                           {type}
                                         </button>
@@ -1188,7 +1243,8 @@ function WorkStatusPage({ user, profile }) {
                                   <span className="work-status-issue-tag global">
                                     {holidayTag}
                                   </span>
-                                ) : record.issueType || record.late ? (
+                                ) : (record.issueType || record.late) &&
+                                  record.issueType !== "hide" ? (
                                   <button
                                     type="button"
                                     className="work-status-issue-tag"
@@ -1202,11 +1258,16 @@ function WorkStatusPage({ user, profile }) {
                                 ) : null}
                                 {isAdmin && issueEditDate === dateKey && (
                                   <div className="work-status-issue-menu">
-                                    {["결근", "지각", "공휴일", "센터휴무"].map((type) => (
+                                    {["결근", "지각", "공휴일", "센터휴무", "삭제"].map((type) => (
                                       <button
                                         key={type}
                                         type="button"
-                                        onClick={() => handleSelectIssueType(dateKey, type)}
+                                        onClick={() =>
+                                          handleSelectIssueType(
+                                            dateKey,
+                                            type === "삭제" ? "hide" : type
+                                          )
+                                        }
                                       >
                                         {type}
                                       </button>

@@ -9,10 +9,10 @@ const parseTimeToMinutes = (value) => {
   return hour * 60 + minute;
 };
 
-// Deprecated: 이제 DB에서 저장된 assumedHours를 사용합니다.
+// Deprecated: 이제 DB에서 저장된 assumedHours(주간)를 사용합니다.
 // 하위 호환성을 위해 유지하지만, workTime.assumedHours가 있으면 우선 사용합니다.
-const getDailyAssumedHours = (workTime) => {
-  // DB에 저장된 상정근로시간이 있으면 우선 사용
+const getWeeklyAssumedHours = (workTime) => {
+  // DB에 저장된 상정근로시간(주간)이 있으면 우선 사용
   if (workTime?.assumedHours != null && workTime.assumedHours !== "") {
     return Number(workTime.assumedHours) || 0;
   }
@@ -26,7 +26,11 @@ const getDailyAssumedHours = (workTime) => {
     durationMinutes += 24 * 60;
   }
   const durationHours = durationMinutes / 60;
-  return Math.max(0, durationHours - 1);
+  const dailyAssumedHours = Math.max(0, durationHours - 1);
+  const scheduledWeekdayCount = Array.isArray(workTime?.weekdays)
+    ? workTime.weekdays.filter((day) => day !== "일").length
+    : 0;
+  return dailyAssumedHours * scheduledWeekdayCount;
 };
 
 export const getNetWorkHoursValue = (startTime, endTime, weekdayIndex) => {
@@ -60,11 +64,11 @@ export const calculateWeeklyAllowance = ({
   const results = [];
   let carryoverHours = 0;
   const isWeeklyAllowanceEnabled = workTime?.weeklyAllowanceEnabled !== false;
-  const dailyAssumedHours = getDailyAssumedHours(workTime);
+  const weeklyAssumedHoursTotal = getWeeklyAssumedHours(workTime);
   const scheduledWeekdayCount = Array.isArray(workTime?.weekdays)
     ? workTime.weekdays.filter((day) => day !== "일").length
     : 0;
-  const maxAssumedHours = Math.min(dailyAssumedHours * scheduledWeekdayCount, 40);
+  const maxAssumedHours = Math.min(weeklyAssumedHoursTotal, 40);
   const monthIndex = month - 1;
   const firstDay = new Date(year, monthIndex, 1);
   const startDate = new Date(firstDay);
@@ -108,13 +112,11 @@ export const calculateWeeklyAllowance = ({
       return count + 1;
     }, 0);
     const hasScheduledDays = weeklyScheduledCount > 0;
+    const dailyAssumedHours = scheduledWeekdayCount > 0
+      ? weeklyAssumedHoursTotal / scheduledWeekdayCount
+      : 0;
     const weeklyAssumedHours = Math.min(
-      inMonthDates.reduce((sum, date) => {
-        const weekdayLabel = WEEKDAY_LABELS[date.getDay()];
-        if (!scheduledWeekdays.has(weekdayLabel)) return sum;
-        if (weekdayLabel === "일") return sum;
-        return sum + dailyAssumedHours;
-      }, 0),
+      dailyAssumedHours * weeklyScheduledCount,
       40
     );
 
@@ -131,6 +133,10 @@ export const calculateWeeklyAllowance = ({
       const record = recordsByDate[dateKey];
       if (record?.issueType === "결근") {
         acc[dateKey] = false;
+        return acc;
+      }
+      if (record?.issueType === "hide") {
+        acc[dateKey] = true;
         return acc;
       }
       acc[dateKey] = Boolean(record?.startTime && record?.endTime);

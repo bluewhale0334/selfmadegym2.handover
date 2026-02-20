@@ -210,6 +210,20 @@
   flex: 1;
 }
 
+.settings-exclude-absence-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #555;
+  cursor: pointer;
+  user-select: none;
+}
+
+.settings-exclude-absence-label input {
+  cursor: pointer;
+}
+
 .settings-worktime-controls {
   display: flex;
   flex-direction: column;
