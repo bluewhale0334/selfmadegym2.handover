@@ -178,6 +178,125 @@
   font-weight: 600;
 }
 
+.employee-stats-salary-table .stat-name-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.employee-stats-salary-table .stat-name-text {
+  display: inline-flex;
+  align-items: center;
+}
+
+.employee-stats-salary-table .stat-detail-button {
+  border: none;
+  background: #d19a4d;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.employee-stats-salary-table .stat-detail-button:hover {
+  background: #b8863b;
+}
+
+.employee-stats-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 11, 7, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+
+.employee-stats-modal {
+  width: min(540px, 92vw);
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.employee-stats-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #efe5d6;
+}
+
+.employee-stats-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #3d2f24;
+}
+
+.employee-stats-modal-close {
+  border: none;
+  background: #f2e6d6;
+  color: #6b5a4b;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.employee-stats-modal-close:hover {
+  background: #e7d8c2;
+}
+
+.employee-stats-modal-content {
+  padding: 20px;
+}
+
+.employee-stats-salary-card {
+  border: 1px solid #f0e8dc;
+  border-radius: 12px;
+  padding: 16px;
+  background: #fffdf8;
+}
+
+.employee-stats-salary-meta {
+  font-size: 13px;
+  color: #6b5a4b;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.employee-stats-salary-main {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.employee-stats-salary-row {
+  display: flex;
+  justify-content: space-between;
+  color: #3d2f24;
+  font-size: 14px;
+}
+
+.employee-stats-salary-divider {
+  height: 1px;
+  background: #ecdcc9;
+  margin: 14px 0;
+}
+
+.employee-stats-salary-total {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  color: #c08a3e;
+  font-size: 16px;
+}
+
 .employee-stats-salary-table .stat-total-cell {
   font-weight: 700;
   color: #c08a3e;

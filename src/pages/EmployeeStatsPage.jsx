@@ -49,6 +49,29 @@ const formatWorkTime = (workTime) => {
     : `${weekdaysText} / ${timeText}`;
 };
 
+const getWeeklyAssumedHours = (workTime) => {
+  if (workTime?.assumedHours != null && workTime.assumedHours !== "") {
+    return Number(workTime.assumedHours) || 0;
+  }
+  const weekdays = Array.isArray(workTime?.weekdays) ? workTime.weekdays : [];
+  const weekdayCountExSunday = weekdays.filter((day) => day !== "일").length;
+  const startTime = workTime?.startTime ? `${workTime.startTime}` : "";
+  const endTime = workTime?.endTime ? `${workTime.endTime}` : "";
+  if (!startTime || !endTime || weekdayCountExSunday === 0) return 0;
+  const [startHourText, startMinuteText = "0"] = startTime.split(":");
+  const [endHourText, endMinuteText = "0"] = endTime.split(":");
+  const startMinutes = Number(startHourText) * 60 + Number(startMinuteText);
+  const endMinutes = Number(endHourText) * 60 + Number(endMinuteText);
+  if (!Number.isFinite(startMinutes) || !Number.isFinite(endMinutes)) return 0;
+  let durationMinutes = endMinutes - startMinutes;
+  if (durationMinutes <= 0) {
+    durationMinutes += 24 * 60;
+  }
+  const durationHours = durationMinutes / 60;
+  const dailyAssumed = Math.max(0, durationHours - 1);
+  return dailyAssumed * weekdayCountExSunday;
+};
+
 function EmployeeStatsPage({ profile, onClose }) {
   const todayDate = useMemo(() => new Date(), []);
   const [viewDate, setViewDate] = useState(
@@ -62,6 +85,7 @@ function EmployeeStatsPage({ profile, onClose }) {
   const [status, setStatus] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [holidayTags, setHolidayTags] = useState({});
+  const [detailStat, setDetailStat] = useState(null);
   const pageSize = 9;
 
   const { viewYear, viewMonth } = useMemo(() => ({
@@ -249,6 +273,9 @@ function EmployeeStatsPage({ profile, onClose }) {
               if (result.carryoverHours > 0) return sum;
               return sum + (result.allowancePay || 0);
             }, 0);
+            const hasWeeklyAllowanceEligible = (weeklyAllowanceResult.weeklyResults || []).some(
+              (result) => result.eligible
+            );
 
             const monthlyWage = baseWage + totalWeeklyBonus;
 
@@ -266,7 +293,9 @@ function EmployeeStatsPage({ profile, onClose }) {
               totalWeeklyBonus,
               totalWorkHours,
               hourlyWage,
-            totalWorkDays,
+              totalWorkDays,
+              assumedHours: getWeeklyAssumedHours(user.workTime),
+              hasWeeklyAllowanceEligible,
             };
           })
         );
@@ -300,6 +329,10 @@ function EmployeeStatsPage({ profile, onClose }) {
       </div>
     );
   }
+
+  const closeDetailModal = () => setDetailStat(null);
+  const detailAssumedHours = detailStat?.assumedHours ?? 0;
+  const showWeeklyBonus = detailAssumedHours >= 15;
 
   return (
     <div className="employee-stats-page">
@@ -413,8 +446,19 @@ function EmployeeStatsPage({ profile, onClose }) {
                           .map((stat) => (
                             <tr key={stat.id}>
                               <td className="stat-name-cell">
-                                {stat.name}
-                                {stat.role ? ` (${stat.role})` : ""}
+                                <div className="stat-name-content">
+                                  <span className="stat-name-text">
+                                    {stat.name}
+                                    {stat.role ? ` (${stat.role})` : ""}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="stat-detail-button"
+                                    onClick={() => setDetailStat(stat)}
+                                  >
+                                    자세히
+                                  </button>
+                                </div>
                               </td>
                               <td>{stat.totalWorkDays}일</td>
                               <td>{stat.totalWorkHours.toFixed(1)}h</td>
@@ -532,6 +576,63 @@ function EmployeeStatsPage({ profile, onClose }) {
           </div>
         </div>
       </div>
+      {detailStat && (
+        <div className="employee-stats-modal-overlay" onClick={closeDetailModal}>
+          <div className="employee-stats-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="employee-stats-modal-header">
+              <h3>예상 급여 상세</h3>
+              <button
+                type="button"
+                className="employee-stats-modal-close"
+                onClick={closeDetailModal}
+              >
+                닫기
+              </button>
+            </div>
+            <div className="employee-stats-modal-content">
+              <div className="employee-stats-salary-card">
+                <div className="employee-stats-salary-meta">
+                  <div>
+                    {detailStat.name} {detailStat.role ? `(${detailStat.role})` : ""}
+                  </div>
+                  <div>{formatWorkTime(detailStat.workTime)}</div>
+                  <div>
+                    상정근로시간({detailAssumedHours.toFixed(1)}시간) - 시급{" "}
+                    {detailStat.hourlyWage
+                      ? `${detailStat.hourlyWage.toLocaleString()}원`
+                      : "미설정"}
+                  </div>
+                </div>
+                <div className="employee-stats-salary-main">
+                  <div className="employee-stats-salary-row">
+                    <span>총 근무일수</span>
+                    <span>{detailStat.totalWorkDays}일</span>
+                  </div>
+                  <div className="employee-stats-salary-row">
+                    <span>총 근무시간</span>
+                    <span>{detailStat.totalWorkHours.toFixed(1)}시간</span>
+                  </div>
+                  <div className="employee-stats-salary-row">
+                    <span>총 시급</span>
+                    <span>{detailStat.baseWage.toLocaleString()}원</span>
+                  </div>
+                  {showWeeklyBonus && detailStat.hasWeeklyAllowanceEligible && (
+                    <div className="employee-stats-salary-row">
+                      <span>주휴수당</span>
+                      <span>{detailStat.totalWeeklyBonus.toLocaleString()}원</span>
+                    </div>
+                  )}
+                </div>
+                <div className="employee-stats-salary-divider" />
+                <div className="employee-stats-salary-total">
+                  <span>예상 급여</span>
+                  <span>{detailStat.monthlyWage.toLocaleString()}원</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
