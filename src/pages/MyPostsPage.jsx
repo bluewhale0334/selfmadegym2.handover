@@ -9,6 +9,7 @@ const COLLECTIONS = [
   { label: "일일 인수인계", name: "handovers" },
   { label: "업무 완료사항", name: "progresses" },
   { label: "업무 리스트", name: "checklists" },
+  { label: "고장&수리", name: "repairs" },
 ];
 
 const getRangeStart = (rangeKey) => {

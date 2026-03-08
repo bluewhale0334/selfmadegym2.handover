@@ -58,6 +58,7 @@ const COMMENT_SOURCES = [
   { label: "일일 인수인계", collection: "handovers", hasDate: true },
   { label: "업무 완료사항", collection: "progresses", hasDate: true },
   { label: "업무 리스트", collection: "checklists", hasDate: true },
+  { label: "고장&수리", collection: "repairs", hasDate: true },
 ];
 
 const getDocKey = (collectionName, documentId) => {

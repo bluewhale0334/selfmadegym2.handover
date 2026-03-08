@@ -10,6 +10,7 @@ const CATEGORY_ORDER = [
   "일일 인수인계",
   "업무 완료사항",
   "업무 리스트",
+  "고장&수리",
 ];
 
 // 카테고리 이름을 Firestore 컬렉션 이름으로 매핑
@@ -20,6 +21,7 @@ const getCollectionName = (category) => {
     "일일 인수인계": "handovers",
     "업무 완료사항": "progresses",
     "업무 리스트": "checklists",
+    "고장&수리": "repairs",
   };
   return mapping[category] || null;
 };
@@ -102,6 +104,7 @@ function SharedCategoryContent({
         { category: "업무 지시", collection: "instructions", hasDate: true },
         { category: "일일 인수인계", collection: "handovers", hasDate: true },
         { category: "업무 완료사항", collection: "progresses", hasDate: true },
+        { category: "고장&수리", collection: "repairs", hasDate: true },
       ];
 
       const allCards = [];

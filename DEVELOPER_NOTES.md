@@ -1,3 +1,25 @@
+# handoverSM 1.4.4 - 변경사항
+
+## 주요 변경사항
+
+### 1. 고장&수리 카테고리 추가
+- **새 카테고리**: "고장&수리" 카테고리 및 RepairContent 페이지 신설
+- **카드형 그리드**: 4열×5행 그리드 레이아웃, 카드 추가/수정/삭제 기능
+- **Firestore 연동**: `repairs` 컬렉션 기반 CRUD (추가, 조회, 수정, 삭제, 수리상태 변경)
+- **정렬**: 미완료 우선 → 작성일 오래된 순 (createdAt 기준)
+- **날짜 표시**: createdAt 기준 작성일자 YY-MM-DD 형식 표시
+- **수리상태**: 완료/미완료 버튼 토글, 카드 하단 좌측 배치
+- **날짜 필터 제거**: 날짜 선택 없이 전체 기록 표시 (hasDates: false)
+- **카드 추가 버튼**: 로딩/20개 제한 제거, 로그인 시 항상 활성화
+- **폰트 크기**: 카드 본문 60% 축소(0.75rem), 수정 모드 textarea 10.4px
+
+## 기술적 변경사항
+- RepairContent.jsx, RepairContent.css 신규 생성
+- DashboardPage: 고장&수리 카테고리 추가, hasDates: false
+- SharedCategoryContent, SharedDocuments, DashboardInContent, NoticeContent, MyPostsPage, SearchPage: repairs 컬렉션 매핑 추가
+
+---
+
 # handoverSM 1.4.3 - 변경사항
 
 ## 주요 변경사항

@@ -91,6 +91,7 @@ function NoticeContent({
         { category: "업무 지시", collection: "instructions", hasDate: true },
         { category: "일일 인수인계", collection: "handovers", hasDate: true },
         { category: "업무 완료사항", collection: "progresses", hasDate: true },
+        { category: "고장&수리", collection: "repairs", hasDate: true },
       ];
 
       const allCards = [];

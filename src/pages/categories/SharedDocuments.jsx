@@ -12,6 +12,7 @@ const getCollectionName = (category) => {
     "일일 인수인계": "handovers",
     "업무 완료사항": "progresses",
     "업무 리스트": "checklists",
+    "고장&수리": "repairs",
   };
   return mapping[category] || null;
 };

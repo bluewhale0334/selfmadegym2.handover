@@ -7,6 +7,7 @@ const SEARCH_INDEXES = [
   { name: "instructions", label: "업무 지시" },
   { name: "handovers", label: "일일 인수인계" },
   { name: "progresses", label: "업무 완료사항" },
+  { name: "repairs", label: "고장&수리" },
 ];
 
 const extractHighlight = (highlight, fallback = "") => {

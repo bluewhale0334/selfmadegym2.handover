@@ -21,6 +21,7 @@ import InstructionContent from "./categories/InstructionContent";
 import HandoverContent from "./categories/HandoverContent";
 import ProgressContent from "./categories/ProgressContent";
 import ChecklistContent from "./categories/ChecklistContent";
+import RepairContent from "./categories/RepairContent";
 import ProfilePage from "./ProfilePage";
 import SettingsPage from "./SettingsPage";
 import ChecklistSettingsPage from "./ChecklistSettingsPage";
@@ -830,6 +831,7 @@ App.jsx
       { label: "일일 인수인계", type: "handover", hasDates: true },
       { label: "업무 완료사항", type: "progress", hasDates: true },
       { label: "업무 리스트", type: "checklist", hasDates: true },
+      { label: "고장&수리", type: "repair", hasDates: false },
     ],
     []
   );
@@ -840,6 +842,7 @@ App.jsx
       { label: "업무 지시", collection: "instructions" },
       { label: "일일 인수인계", collection: "handovers" },
       { label: "업무 완료사항", collection: "progresses" },
+      { label: "고장&수리", collection: "repairs" },
     ],
     []
   );
@@ -1169,6 +1172,7 @@ App.jsx
         "일일 인수인계": "handovers",
         "업무 완료사항": "progresses",
         "업무 리스트": "checklists",
+        "고장&수리": "repairs",
       };
 
       const collectionName = categoryCollections[datePickerCategory];
@@ -1349,6 +1353,8 @@ App.jsx
             onOpenChecklistSettings={() => setShowChecklistSettingsPage(true)}
           />
         );
+      case "고장&수리":
+        return <RepairContent {...props} />;
       default:
         return (
           <DashboardContent
