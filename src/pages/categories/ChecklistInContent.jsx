@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where, Timestamp } from "firebase/firestore";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+  Timestamp,
+} from "firebase/firestore";
 import { db } from "../../firebase";
 import DatePicker from "./DatePicker";
 import "./ChecklistInContent.css";
@@ -10,11 +21,6 @@ const formatToday = () => {
   const month = String(today.getMonth() + 1).padStart(2, "0");
   const day = String(today.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-};
-
-const formatShortDate = (dateString) => {
-  const [year, month, day] = dateString.split("-");
-  return `${month}/${day}`;
 };
 
 const getSnapshotDocId = (userId, date) => {
@@ -42,14 +48,15 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
   const [showAdminUserList, setShowAdminUserList] = useState(false);
   const [targetUserId, setTargetUserId] = useState(user?.uid ?? null);
   const [activeDate, setActiveDate] = useState(formatToday);
-  const [recentDates, setRecentDates] = useState([]);
-  const [recentSnapshots, setRecentSnapshots] = useState({});
   const [availableDates, setAvailableDates] = useState([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showDateAdder, setShowDateAdder] = useState(false);
   const [pendingSelectDate, setPendingSelectDate] = useState(formatToday);
-  const [pendingAddDate, setPendingAddDate] = useState(formatToday);
   const [nowTick, setNowTick] = useState(() => Date.now());
+  const [reloadKey, setReloadKey] = useState(0);
+  const [showOverwriteModal, setShowOverwriteModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [snapshotDocExists, setSnapshotDocExists] = useState(false);
+  const [todayListSuppressAutoCreate, setTodayListSuppressAutoCreate] = useState(false);
 
   const isAdmin = profile?.user_type === "admin";
   const today = formatToday();
@@ -68,33 +75,8 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
   }, [user?.uid]);
 
   useEffect(() => {
-    const base = new Date(today);
-    const dates = [];
-    for (let i = 0; i < 5; i += 1) {
-      const next = new Date(base);
-      next.setDate(base.getDate() - i);
-      const year = next.getFullYear();
-      const month = String(next.getMonth() + 1).padStart(2, "0");
-      const day = String(next.getDate()).padStart(2, "0");
-      dates.push(`${year}-${month}-${day}`);
-    }
-    setRecentDates(dates);
-  }, [today]);
-
-  useEffect(() => {
-    if (!targetUserId || recentDates.length === 0) return;
-    const fetchSnapshots = async () => {
-      const next = {};
-      for (const date of recentDates) {
-        const snapshotId = getSnapshotDocId(targetUserId, date);
-        const snapshotRef = doc(db, "dailyChecklistSnapshots", snapshotId);
-        const snapshotDoc = await getDoc(snapshotRef);
-        next[date] = snapshotDoc.exists();
-      }
-      setRecentSnapshots(next);
-    };
-    fetchSnapshots();
-  }, [targetUserId, recentDates]);
+    setTodayListSuppressAutoCreate(false);
+  }, [targetUserId]);
 
   useEffect(() => {
     if (!targetUserId) return;
@@ -134,6 +116,8 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
           if (!data?.name) return;
+          // SettingsPage 퇴사 처리와 동일: disabled === true 인 직원은 목록에서 제외
+          if (data.disabled === true) return;
           next.push({
             id: docSnap.id,
             name: data.name,
@@ -149,26 +133,21 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
     fetchUsers();
   }, [isAdmin]);
 
+  useEffect(() => {
+    if (!isAdmin || !user?.uid) return;
+    const activeIds = new Set(adminUsers.map((u) => u.id));
+    if (targetUserId && targetUserId !== user.uid && !activeIds.has(targetUserId)) {
+      setTargetUserId(adminUsers[0]?.id ?? user.uid);
+    }
+  }, [isAdmin, adminUsers, targetUserId, user?.uid]);
+
   const selectedUserLabel = useMemo(() => {
     if (!isAdmin) return "내 업무 리스트";
     const match = adminUsers.find((u) => u.id === targetUserId);
     return match ? `${match.name} (${match.role || "직책"})` : "사용자 선택";
   }, [isAdmin, adminUsers, targetUserId]);
 
-  const createSnapshotForDate = async (dateValue) => {
-    if (!targetUserId) return false;
-    if (!isAdmin && targetUserId !== user?.uid) {
-      setStatus("다른 사용자의 날짜 추가는 관리자만 가능합니다.");
-      return false;
-    }
-    const snapshotId = getSnapshotDocId(targetUserId, dateValue);
-    const snapshotRef = doc(db, "dailyChecklistSnapshots", snapshotId);
-    const existing = await getDoc(snapshotRef);
-    if (existing.exists()) {
-      setStatus("이미 등록된 날짜입니다.");
-      return false;
-    }
-
+  const fetchTemplateSnapshotPayload = async () => {
     const taskQuery = query(
       collection(db, "checklistTasks"),
       where("userId", "==", targetUserId)
@@ -212,15 +191,103 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
       });
     });
 
+    return { items, repeatItems };
+  };
+
+  const writeTodaySnapshotFromTemplate = async () => {
+    if (!targetUserId) return false;
+    const { items, repeatItems } = await fetchTemplateSnapshotPayload();
+    const snapshotId = getSnapshotDocId(targetUserId, today);
+    const snapshotRef = doc(db, "dailyChecklistSnapshots", snapshotId);
     await setDoc(snapshotRef, {
       userId: targetUserId,
-      date: dateValue,
+      date: today,
       createdAt: Timestamp.now(),
       items,
       extraItems: [],
       repeatItems,
     });
     return true;
+  };
+
+  const handleListAddClick = async () => {
+    if (!targetUserId) return;
+    if (!isAdmin && targetUserId !== user?.uid) {
+      setStatus("다른 사용자의 리스트 추가는 관리자만 가능합니다.");
+      return;
+    }
+    setStatus("");
+    setShowDatePicker(false);
+    const snapshotId = getSnapshotDocId(targetUserId, today);
+    const snapshotRef = doc(db, "dailyChecklistSnapshots", snapshotId);
+    try {
+      const existing = await getDoc(snapshotRef);
+      if (existing.exists()) {
+        setShowOverwriteModal(true);
+        return;
+      }
+      await writeTodaySnapshotFromTemplate();
+      setTodayListSuppressAutoCreate(false);
+      setActiveDate(today);
+      setPendingSelectDate(today);
+      setReloadKey((k) => k + 1);
+      setAvailableDates((prev) => (prev.includes(today) ? prev : [...prev, today]));
+      setStatus("");
+    } catch (error) {
+      console.error("Error writing today checklist snapshot:", error);
+      setStatus("리스트를 불러오지 못했습니다.");
+    }
+  };
+
+  const confirmOverwriteTodayList = async () => {
+    setShowOverwriteModal(false);
+    try {
+      await writeTodaySnapshotFromTemplate();
+      setTodayListSuppressAutoCreate(false);
+      setActiveDate(today);
+      setPendingSelectDate(today);
+      setReloadKey((k) => k + 1);
+      setAvailableDates((prev) => (prev.includes(today) ? prev : [...prev, today]));
+      setStatus("");
+    } catch (error) {
+      console.error("Error overwriting today checklist snapshot:", error);
+      setStatus("리스트를 덮어쓰지 못했습니다.");
+    }
+  };
+
+  const handleDeleteListClick = () => {
+    if (!targetUserId || !snapshotDocExists) return;
+    if (!isAdmin && targetUserId !== user?.uid) {
+      setStatus("다른 사용자의 리스트 삭제는 관리자만 가능합니다.");
+      return;
+    }
+    setStatus("");
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteActiveDateList = async () => {
+    if (!targetUserId) return;
+    setShowDeleteModal(false);
+    const snapshotId = getSnapshotDocId(targetUserId, activeDateValue);
+    const snapshotRef = doc(db, "dailyChecklistSnapshots", snapshotId);
+    try {
+      const snap = await getDoc(snapshotRef);
+      if (!snap.exists()) {
+        setStatus("삭제할 업무 리스트가 없습니다.");
+        setReloadKey((k) => k + 1);
+        return;
+      }
+      await deleteDoc(snapshotRef);
+      setAvailableDates((prev) => prev.filter((d) => d !== activeDateValue));
+      if (activeDateValue === today && targetUserId === user?.uid) {
+        setTodayListSuppressAutoCreate(true);
+      }
+      setReloadKey((k) => k + 1);
+      setStatus("업무 리스트가 삭제되었습니다.");
+    } catch (error) {
+      console.error("Error deleting checklist snapshot:", error);
+      setStatus("업무 리스트를 삭제하지 못했습니다.");
+    }
   };
 
   useEffect(() => {
@@ -233,6 +300,7 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
       try {
         const snapshotDoc = await getDoc(snapshotRef);
         if (snapshotDoc.exists()) {
+          setSnapshotDocExists(true);
           const data = snapshotDoc.data();
           const nextDailyItems = Array.isArray(data.items) ? data.items : [];
           const nextExtraItems = Array.isArray(data.extraItems) ? data.extraItems : [];
@@ -288,6 +356,8 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
           return;
         }
 
+        setSnapshotDocExists(false);
+
         if (activeDateValue !== today) {
           setDailyItems([]);
           setExtraItems([]);
@@ -302,6 +372,15 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
           setExtraItems([]);
           setRepeatItems([]);
           setStatus("선택한 사용자의 오늘 업무 리스트가 아직 생성되지 않았습니다.");
+          setIsLoading(false);
+          return;
+        }
+
+        if (todayListSuppressAutoCreate) {
+          setDailyItems([]);
+          setExtraItems([]);
+          setRepeatItems([]);
+          setStatus("업무 리스트가 삭제되었습니다. 리스트 추가로 다시 불러올 수 있습니다.");
           setIsLoading(false);
           return;
         }
@@ -357,6 +436,7 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
           extraItems: [],
           repeatItems,
         });
+        setSnapshotDocExists(true);
         setDailyItems(items);
         setExtraItems([]);
         setRepeatItems(repeatItems);
@@ -369,7 +449,7 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
     };
 
     loadDailyChecklist();
-  }, [targetUserId, activeDateValue, today, user?.uid, nowTick]);
+  }, [targetUserId, activeDateValue, today, user?.uid, nowTick, reloadKey, todayListSuppressAutoCreate]);
 
   useEffect(() => {
     let timeoutId;
@@ -579,7 +659,6 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
           onClick={() => {
             setPendingSelectDate(activeDateValue);
             setShowDatePicker((prev) => !prev);
-            setShowDateAdder(false);
           }}
         >
           {activeDateValue === today ? "날짜 선택" : displayDateLabel}
@@ -600,53 +679,20 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
           type="button"
           className="checklist-date-button"
           onClick={() => {
-            setPendingAddDate(today);
-            setShowDateAdder((prev) => !prev);
             setShowDatePicker(false);
+            handleListAddClick();
           }}
         >
-          날짜 추가
+          리스트 추가
         </button>
-        {showDateAdder && (
-          <div className="checklist-date-popover">
-            <input
-              type="date"
-              value={pendingAddDate}
-              onChange={(event) => setPendingAddDate(event.target.value)}
-            />
-            <button
-              type="button"
-              onClick={async () => {
-                const created = await createSnapshotForDate(pendingAddDate);
-                if (created) {
-                  setActiveDate(pendingAddDate);
-                  setRecentSnapshots((prev) => ({ ...prev, [pendingAddDate]: true }));
-                }
-                setShowDateAdder(false);
-              }}
-            >
-              추가
-            </button>
-          </div>
-        )}
-        <div className="checklist-recent-dates">
-          {recentDates.map((date) => {
-            const hasSnapshot = recentSnapshots[date];
-            if (!hasSnapshot) return null;
-            return (
-              <button
-                key={date}
-                type="button"
-                className={`checklist-date-button checklist-recent-button${
-                  date === activeDateValue ? " active" : ""
-                }`}
-                onClick={() => setActiveDate(date)}
-              >
-                {formatShortDate(date)}
-              </button>
-            );
-          })}
-        </div>
+        <button
+          type="button"
+          className="checklist-date-button checklist-date-button-danger"
+          disabled={isLoading || !snapshotDocExists}
+          onClick={handleDeleteListClick}
+        >
+          리스트 삭제
+        </button>
         {isAdmin && (
           <div className="checklist-admin-user">
             <button
@@ -684,6 +730,78 @@ function ChecklistInContent({ selectedDate, onOpenChecklistSettings, user, profi
           </div>
         )}
       </div>
+      {showOverwriteModal && (
+        <div
+          className="checklist-modal-backdrop"
+          role="presentation"
+          onClick={() => setShowOverwriteModal(false)}
+        >
+          <div
+            className="checklist-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="checklist-overwrite-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="checklist-overwrite-title" className="checklist-modal-title">
+              리스트 덮어쓰기
+            </h2>
+            <p className="checklist-modal-body">
+              오늘 날짜의 업무 리스트가 이미 있습니다. 템플릿으로 다시 불러오면 기존 내용이 사라집니다.
+              계속하시겠습니까?
+            </p>
+            <div className="checklist-modal-actions">
+              <button type="button" className="checklist-modal-button" onClick={() => setShowOverwriteModal(false)}>
+                취소
+              </button>
+              <button type="button" className="checklist-modal-button checklist-modal-button-primary" onClick={confirmOverwriteTodayList}>
+                계속
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showDeleteModal && (
+        <div
+          className="checklist-modal-backdrop"
+          role="presentation"
+          onClick={() => setShowDeleteModal(false)}
+        >
+          <div
+            className="checklist-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="checklist-delete-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="checklist-delete-title" className="checklist-modal-title">
+              리스트 삭제
+            </h2>
+            <p className="checklist-modal-body">
+              <strong>{displayDateLabel}</strong>
+              {isAdmin && (
+                <>
+                  {" "}
+                  · {selectedUserLabel}
+                </>
+              )}
+              의 업무 리스트를 모두 삭제합니다. 이 작업은 되돌릴 수 없습니다.
+            </p>
+            <div className="checklist-modal-actions">
+              <button type="button" className="checklist-modal-button" onClick={() => setShowDeleteModal(false)}>
+                취소
+              </button>
+              <button
+                type="button"
+                className="checklist-modal-button checklist-modal-button-danger"
+                onClick={confirmDeleteActiveDateList}
+              >
+                삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="checklist-layout">
         <div className="checklist-left">
           <div className="checklist-box checklist-left-inner checklist-left-split">
